@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
+load_dotenv("src/.env")
+
 from llama_index.llms.nvidia import NVIDIA
 from llama_index.core.llms import ChatMessage, MessageRole
 
-load_dotenv()
 
 client = NVIDIA(
   model="nvidia/nemotron-3-ultra-550b-a55b",
@@ -14,8 +15,14 @@ client = NVIDIA(
 
 response = client.chat(
     messages=[
-        ChatMessage(role=MessageRole.SYSTEM, content="You are a helpful assistant."),
-        ChatMessage(role=MessageRole.USER, content="Tell me a Joke about AI")
+        ChatMessage(
+            role=MessageRole.SYSTEM, 
+            content="You are a helpful assistant."
+        ),
+        ChatMessage(
+            role=MessageRole.USER, 
+            content="Tell me a Joke about AI"
+        )
     ],
 )
 
