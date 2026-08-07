@@ -10,11 +10,31 @@ from llama_index.core.prompts import PromptTemplate
 from llama_index.core.agent import ReActAgent, FunctionAgent
 from llama_index.core.workflow import Context
 
+from aiolimiter import AsyncLimiter
+
+
+class RateLimitedModel:
+    def __init__(self, model, requests_per_minute: int, max_concurrent: int = 1):
+        self.model = model
+        self.request_limiter = AsyncLimiter(requests_per_minute, 30)
+        self.concurrency = asyncio.Semaphore(max_concurrent)
+
+    async def acomplete(self, request):
+        async with self.request_limiter:
+            async with self.concurrency:
+                return await self.model.acomplete(request)
+
+rate_limiter = RateLimitedModel(
+    model=None,  # This will be set to the actual model instance later
+    requests_per_minute=30,  # Set your desired rate limit here
+    max_concurrent=1  # Set the maximum number of concurrent requests
+)
+
 llm = OpenAILike(
+    is_chat_model=True,
     model="nvidia/nemotron-3-ultra-550b-a55b",
     api_base = "https://integrate.api.nvidia.com/v1",
     api_key = os.getenv("NVIDIA_API_KEY"),
-    is_chat_model=True
 )
 
 
