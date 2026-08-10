@@ -7,9 +7,6 @@ init_session_schema = {
                 "session_started"
             ]
         },
-        "status": {
-            "type": "string"
-        },
         "conversation_id": {
             "type": "string"
         },
@@ -24,17 +21,11 @@ init_session_schema = {
                 "accept-edits"
             ]
         },
+        "agent": {
+            "type": "string",
+        },
         "workspace": {
             "type": "string"
-        },
-        "context_window": {
-            "type": "integer"
-        },
-        "input_tokens": {
-            "type": "integer"
-        },
-        "output_tokens": {
-            "type": "integer"
         },
         "context_usage_percent": {
             "type": "number"
@@ -42,14 +33,11 @@ init_session_schema = {
     },
     "required": [
         "action",
-        "status",
         "conversation_id",
         "model",
         "mode",
+        "agent",
         "workspace",
-        "context_window",
-        "input_tokens",
-        "output_tokens",
         "context_usage_percent"
     ]
 }

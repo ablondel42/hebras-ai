@@ -43,11 +43,11 @@ async def init_session_prompt(options: InitSessionOptions):
         json_schema=options.json_schema or init_session_schema,
     )
 
-    print(json.dumps(json.loads(stdout), indent=2))
+    # print(json.dumps(json.loads(stdout), indent=2))
     # print(stdout_json)
     # stderr_json = json.dumps(json.loads(stderr), indent=2)
     # print(stderr_json)
-    # print(json.dumps(structured_output, indent=2))
+    print(json.dumps(structured_output, indent=2))
 
 
     response = {

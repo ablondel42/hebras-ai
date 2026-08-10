@@ -1,5 +1,6 @@
 # agy_client.py
 import json
+from pathlib import Path
 import subprocess
 import time
 from typing import Optional, Any, Dict, Tuple
@@ -21,14 +22,17 @@ def init_session(
     conversation_id: str | None,
     timeout: int = 120,
     json_schema: Dict[str, Any] = {},
+    cwd: str = "/Users/arnaud/dev/_fullstack-ai-python/hebras-ai"
 ) -> Tuple[str, str, int, Optional[Dict[str, Any]]]:
     """
-    Run agy -p and return (stdout, stderr, returncode, structured_output, duration).
+    Run agy --print and return (stdout, stderr, returncode, structured_output, duration).
     """
     cmd = [
-        "agy", "-p", prompt,
+        "agy", 
+        "--print", prompt,
+        "--agent", "read",
         "--output-format", "json",
-        "--dangerously-skip-permissions"
+        "--add-dir", str(Path(cwd).expanduser().resolve()),
     ]
 
     if json_schema:
@@ -36,13 +40,13 @@ def init_session(
     if conversation_id:
         cmd.extend(["--conversation", conversation_id])
 
-
     start = time.time()
     proc = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
+        cwd=Path(cwd).expanduser().resolve(),
     )
 
     structured = None
