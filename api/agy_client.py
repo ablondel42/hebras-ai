@@ -4,6 +4,18 @@ import subprocess
 import time
 from typing import Optional, Any, Dict, Tuple
 
+from click import prompt
+
+
+def get_help():
+    cmd = ["agy", "-h"]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stderr
+
 def init_session(
     prompt: str,
     conversation_id: str | None,

@@ -9,18 +9,8 @@ from fastapi import FastAPI
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any
-
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-try:
-    from .agy_client import init_session as agy_init_session
-except ImportError:
-    from agy_client import init_session as agy_init_session
-
-from schemas import init_session_schema
-
+from api.agy_client import get_help, init_session
+from schemas.init_session_schema import init_session_schema
 app = FastAPI()
 
 
@@ -37,9 +27,16 @@ async def root():
     return {"message": "root"}
 
 
+@app.get("/help")
+async def help():
+    help_text = get_help()
+    print("Help text:", help_text, flush=True)
+    return help_text
+
+
 @app.post("/init-session")
 async def init_session_prompt(options: InitSessionOptions):
-    stdout, stderr, returncode, structured_output = agy_init_session(
+    stdout, stderr, returncode, structured_output = init_session(
         prompt=options.prompt,
         conversation_id=options.conversation_id or "",
         timeout=options.timeout,

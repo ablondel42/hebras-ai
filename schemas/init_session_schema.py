@@ -1,4 +1,4 @@
-{
+init_session_schema = {
     "type": "object",
     "properties": {
         "action": {
