@@ -1,11 +1,11 @@
-"""Unit tests for safe_run_command and anti-hang interceptor."""
+"""Unit tests for safe_run_command process execution engine."""
 import sys
 import pytest
 from core.safe_runner import safe_run_command
 
 
 class TestSafeRunner:
-    """Tests for safe_run_command execution and timeout interception."""
+    """Tests for safe_run_command execution and timeout handling."""
 
     async def test_normal_command_execution(self):
         """Verify normal fast commands execute cleanly."""
@@ -16,18 +16,16 @@ class TestSafeRunner:
 
     async def test_closed_stdin_prevents_hang(self):
         """Verify passing stdin=DEVNULL prevents commands from reading stdin."""
-        # 'python3 -c "import sys; sys.stdin.read()"' normally hangs waiting for EOF on stdin
         res = await safe_run_command(
             [sys.executable, "-c", "import sys; print(sys.stdin.read())"],
             timeout=5,
             override_stdin_devnull=True,
         )
         assert res.returncode == 0
-        assert res.duration_ms < 2000  # Exits immediately on EOF
+        assert res.duration_ms < 2000
 
-    async def test_timeout_auto_learning(self, tmp_path):
-        """Verify timing out on a hanging command triggers auto-learning."""
-        # Run a python command that sleeps 10s with timeout=1s
+    async def test_timeout_handling(self):
+        """Verify timing out on a command kills process and returns returncode 124."""
         res = await safe_run_command(
             [sys.executable, "-c", "import time; time.sleep(10)"],
             timeout=1,
