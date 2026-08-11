@@ -87,8 +87,10 @@ class InteractiveSession:
         if self.child is not None and self.child.isalive():
             try:
                 self.child.read_nonblocking(65536, timeout=0.01)
-            except (pexpect.TIMEOUT, pexpect.EOF, Exception):
+            except (pexpect.TIMEOUT, pexpect.EOF):
                 pass
+            except Exception as e:
+                logger.debug(f"PTY drain unexpected error: {e}")
 
     async def start(self) -> None:
         """Spawn the agy process with PTY output dump logging enabled."""
@@ -124,21 +126,28 @@ class InteractiveSession:
 
         try:
             self._dump_file = open(self.pty_dump_file_path, "w", encoding="utf-8", buffering=1)
-            self.child = pexpect.spawn(
-                cmd,
-                timeout=RESPONSE_TIMEOUT,
-                encoding="utf-8",
-                maxread=65536,
-                env=env,
-            )
-            self.child.logfile = self._dump_file
-            self._started = True
+            try:
+                self.child = pexpect.spawn(
+                    cmd,
+                    timeout=RESPONSE_TIMEOUT,
+                    encoding="utf-8",
+                    maxread=65536,
+                    env=env,
+                )
+                self.child.logfile = self._dump_file
+                self._started = True
+            except Exception:
+                if self._dump_file:
+                    self._dump_file.close()
+                    self._dump_file = None
+                raise
         except Exception as e:
             raise InteractiveSessionError(f"Failed to spawn agy interactive process: {e}") from e
 
         # Wait 4 seconds for agy startup & drain initial PTY buffer
-        start_t = asyncio.get_event_loop().time()
-        while (asyncio.get_event_loop().time() - start_t) < 4.0:
+        import time
+        start_t = time.monotonic()
+        while (time.monotonic() - start_t) < 4.0:
             self._drain_pty_buffer()
             await asyncio.sleep(0.2)
 
@@ -165,7 +174,9 @@ class InteractiveSession:
                 f"Sending prompt to agy session ({self.agent}): '{message[:80]}...'"
             )
 
-            assert self.child is not None
+            if self.child is None:
+                raise InteractiveSessionError("PTY child process is None")
+
             brain_root = Path.home() / ".gemini" / "antigravity-cli" / "brain"
             dirs_before = set(glob.glob(str(brain_root / "*")))
 
@@ -175,14 +186,15 @@ class InteractiveSession:
             self.child.send(f"{message}\r")
 
             # Await brain directory resolution if this turn creates a new session folder
-            start_t = asyncio.get_event_loop().time()
-            while (asyncio.get_event_loop().time() - start_t) < 15.0:
+            import time
+            start_t = time.monotonic()
+            while (time.monotonic() - start_t) < 15.0:
                 self._drain_pty_buffer()
                 if self.transcript_path.exists():
                     break
                 dirs_after = set(glob.glob(str(brain_root / "*"))) - dirs_before
                 if dirs_after:
-                    assigned_id = Path(list(dirs_after)[0]).name
+                    assigned_id = Path(sorted(dirs_after)[-1]).name
                     logger.info(f"Discovered active agy session conversation_id: {assigned_id}")
                     self.conversation_id = assigned_id
                     break
@@ -192,10 +204,11 @@ class InteractiveSession:
 
     async def _await_response_from_transcript(self) -> str:
         """Poll transcript_full.jsonl for new MODEL PLANNER_RESPONSE with content."""
-        start_time = asyncio.get_event_loop().time()
+        import time
+        start_time = time.monotonic()
         start_line = self._transcript_line_count
 
-        while (asyncio.get_event_loop().time() - start_time) < RESPONSE_TIMEOUT:
+        while (time.monotonic() - start_time) < RESPONSE_TIMEOUT:
             if not self.is_alive():
                 raise InteractiveSessionError("agy PTY process terminated unexpectedly")
 
@@ -221,8 +234,8 @@ class InteractiveSession:
                                         f"Extracted response from transcript log: length={len(response_text)}"
                                     )
                                     return response_text
-                            except json.JSONDecodeError:
-                                pass
+                            except json.JSONDecodeError as e:
+                                logger.debug(f"Skipping malformed transcript JSON line: {e}")
                 except Exception as e:
                     logger.debug(f"Reading transcript log: {e}")
 
@@ -237,7 +250,8 @@ class InteractiveSession:
         if self.transcript_path.exists():
             try:
                 return len(self.transcript_path.read_text(encoding="utf-8", errors="replace").splitlines())
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Error reading transcript line count: {e}")
                 return 0
         return 0
 
@@ -262,6 +276,7 @@ class InteractiveSession:
                 if self._dump_file:
                     try:
                         self._dump_file.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Error closing PTY dump file: {e}")
+                    self._dump_file = None
                     self._dump_file = None

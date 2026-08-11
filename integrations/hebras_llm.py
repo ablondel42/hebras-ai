@@ -3,19 +3,24 @@
 Subclasses CustomLLM from llama_index.core.llms to allow LlamaIndex to treat
 hebras-ai (and its agy backend) as a remote LLM provider.
 """
-import asyncio
+import json
+import logging
 from typing import Any, Optional
+
 import httpx
 from pydantic import Field
 
+from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.llms import (
-    CustomLLM,
     CompletionResponse,
     CompletionResponseGen,
+    CustomLLM,
     LLMMetadata,
 )
-from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.llms.callbacks import llm_completion_callback
+from llama_index.core.llms.function_calling import FunctionCallingLLM
+
+logger = logging.getLogger(__name__)
 
 
 class HebrasLLM(CustomLLM, FunctionCallingLLM):
@@ -72,7 +77,6 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
         messages = list(chat_history or [])
         if user_msg:
             if isinstance(user_msg, str):
-                from llama_index.core.base.llms.types import ChatMessage
                 messages.append(ChatMessage(role="user", content=user_msg))
             else:
                 messages.append(user_msg)
@@ -83,7 +87,10 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
         response: Any,
         error_on_no_tool_call: bool = False,
     ) -> list[Any]:
-        """Extract tool calls from LLM response for LlamaIndex FunctionCallingLLM interface."""
+        """Extract tool calls from LLM response for LlamaIndex FunctionCallingLLM interface.
+
+        Note: Currently a stub returning [] so LlamaIndex FunctionAgent accepts HebrasLLM.
+        """
         if error_on_no_tool_call:
             raise ValueError("No tool calls found in response.")
         return []
@@ -132,7 +139,6 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
                         data_str = line[6:].strip()
                         if data_str == "[DONE]":
                             break
-                        import json
                         chunk_data = json.loads(data_str)
                         if "system_fingerprint" in chunk_data and chunk_data["system_fingerprint"]:
                             self.conversation_id = chunk_data["system_fingerprint"]
@@ -144,8 +150,8 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
                                 current_text += delta
                                 yielded_any = True
                                 yield CompletionResponse(text=current_text, delta=delta, raw=chunk_data)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Streaming failed, falling back to sync completion: {e}")
 
         if not yielded_any:
             res = self.complete(prompt, **kwargs)
@@ -166,7 +172,6 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
             self.conversation_id = data["system_fingerprint"]
 
         return CompletionResponse(text=text, raw=data)
-
 
 
 if __name__ == "__main__":

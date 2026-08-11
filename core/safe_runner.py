@@ -1,18 +1,24 @@
-"""Safe command execution engine with anti-hang memory interception and auto-learning."""
 import asyncio
+import logging
 import os
 import time
-import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AsyncIterator
 
-from core.command_memory import CommandMemoryStore, CommandRule
+from core.command_memory import CommandMemoryStore
 
 logger = logging.getLogger(__name__)
 
-# Global memory store instance
-memory_store = CommandMemoryStore()
+# Global memory store instance (lazy initialized)
+_memory_store: CommandMemoryStore | None = None
+
+
+def get_memory_store() -> CommandMemoryStore:
+    """Lazy initialize global CommandMemoryStore instance."""
+    global _memory_store
+    if _memory_store is None:
+        _memory_store = CommandMemoryStore()
+    return _memory_store
 
 
 @dataclass
@@ -46,10 +52,11 @@ async def safe_run_command(
         ExecutionResult containing stdout, stderr, returncode, and mitigation details.
     """
     cmd_str = " ".join(cmd)
+    memory_store = get_memory_store()
     rule = memory_store.match(cmd_str)
 
     # Defaults: close stdin if overridden or matched by rule or default True for non-interactive safe execution
-    close_stdin = True if override_stdin_devnull is not False else False
+    close_stdin = override_stdin_devnull is not False
     exec_env = dict(os.environ)
     if env:
         exec_env.update(env)
@@ -128,8 +135,8 @@ async def safe_run_command(
         try:
             proc.kill()
             await proc.wait()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to kill timed out process: {e}")
 
         return ExecutionResult(
             stdout="",

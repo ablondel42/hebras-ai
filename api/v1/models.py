@@ -23,23 +23,26 @@ def _discover_agents() -> list[ModelInfo]:
     agents_dir = Path(settings.agy_agents_dir)
     models: list[ModelInfo] = []
 
-    if not agents_dir.exists():
-        logger.warning(f"Agents directory not found: {agents_dir}")
-        return models
+    try:
+        if not agents_dir.exists():
+            logger.warning("Agents directory not found: %s", agents_dir)
+            return models
 
-    for agent_dir in sorted(agents_dir.iterdir()):
-        if agent_dir.is_dir():
-            # Check for a .md config file
-            md_files = list(agent_dir.glob("*.md"))
-            if md_files:
-                agent_name = agent_dir.name
-                models.append(
-                    ModelInfo(
-                        id=f"hebras-{agent_name}",
-                        created=int(agent_dir.stat().st_mtime),
-                        owned_by="hebras-ai",
+        for agent_dir in sorted(agents_dir.iterdir()):
+            if agent_dir.is_dir():
+                # Check for a .md config file
+                md_files = list(agent_dir.glob("*.md"))
+                if md_files:
+                    agent_name = agent_dir.name
+                    models.append(
+                        ModelInfo(
+                            id=f"hebras-{agent_name}",
+                            created=int(agent_dir.stat().st_mtime),
+                            owned_by="hebras-ai",
+                        )
                     )
-                )
+    except OSError as e:
+        logger.error("Error discovering agents in %s: %s", agents_dir, e)
 
     return models
 
@@ -51,7 +54,12 @@ async def list_models() -> ModelListResponse:
     Scans the agents directory and returns each configured agent
     as an OpenAI-compatible model entry.
     """
-    models = _discover_agents()
+    try:
+        models = _discover_agents()
+    except Exception as e:
+        logger.error("Failed to list models: %s", e)
+        models = []
+
     if not models:
         logger.warning("No agents discovered, returning default model")
         models = [

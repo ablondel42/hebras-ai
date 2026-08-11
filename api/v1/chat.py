@@ -9,9 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_session_manager
+from core.agy_interactive import InteractiveSession, InteractiveSessionError
 from core.agy_process import AgyProcessError, run_agy, stream_agy
 from core.config import settings
-from core.session_manager import SessionManager, SessionPoolFull
+from core.session import AgySession
+from core.session_manager import SessionManager, SessionNotFound, SessionPoolFull
 from core.types import (
     ChatCompletionChunk,
     ChatCompletionRequest,
@@ -117,7 +119,7 @@ async def chat_completions(
     if request.conversation_id:
         try:
             session = await sm.get_session(request.conversation_id)
-        except Exception:
+        except SessionNotFound:
             logger.debug(f"Session {request.conversation_id} not found, creating new")
 
     if not session:
@@ -136,7 +138,7 @@ async def chat_completions(
     is_interactive = request.interactive or request.model.startswith("hebras-interactive-")
 
     logger.info(
-        f"Processing chat completion request: prompt='{prompt[:120]}' "
+        f"Processing chat completion request: prompt_length={len(prompt)} "
         f"agent='{agent}' conversation_id='{session.conversation_id}' "
         f"stream={request.stream} interactive={is_interactive}"
     )
@@ -151,7 +153,7 @@ async def chat_completions(
 
 async def _handle_non_streaming(
     request: ChatCompletionRequest,
-    session,
+    session: AgySession,
     prompt: str,
     agent: str,
     json_schema: dict | None,
@@ -181,7 +183,7 @@ async def _handle_non_streaming(
 
     logger.info(
         f"Non-streaming completion finished: conversation_id='{session.conversation_id}' "
-        f"response='{response_text[:120]}...'"
+        f"response_length={len(response_text)}"
     )
 
     # Extract usage info if available
@@ -207,7 +209,7 @@ async def _handle_non_streaming(
 
 async def _handle_streaming(
     request: ChatCompletionRequest,
-    session,
+    session: AgySession,
     prompt: str,
     agent: str,
     json_schema: dict | None,
@@ -336,7 +338,7 @@ async def _handle_streaming(
 
 async def _handle_interactive(
     request: ChatCompletionRequest,
-    session,
+    session: AgySession,
     prompt: str,
     agent: str,
     json_schema: dict | None,
@@ -346,8 +348,6 @@ async def _handle_interactive(
     Creates or reuses a persistent agy TUI session.
     Returns standard OpenAI-format response with clean text.
     """
-    from core.agy_interactive import InteractiveSession, InteractiveSessionError
-
     if session.interactive is None or not session.interactive.is_alive():
         interactive = InteractiveSession(
             agent=agent,

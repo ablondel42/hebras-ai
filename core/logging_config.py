@@ -38,4 +38,5 @@ def setup_logging() -> None:
             logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
         )
 
-    root.handlers = [handler]
+    root.handlers.clear()
+    root.addHandler(handler)

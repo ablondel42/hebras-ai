@@ -134,8 +134,8 @@ async def run_agy(
     if stdout_text.strip():
         try:
             data = json.loads(stdout_text)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse agy JSON output: {e} | stdout: {stdout_text[:200]}")
 
     if res.returncode != 0 or (data and data.get("status") == "ERROR"):
         error_msg = f"agy exited with code {res.returncode}"
@@ -183,7 +183,7 @@ async def stream_agy(
         json_schema: Optional JSON schema for structured output.
         conversation_id: Optional conversation ID for multi-turn.
         workspace: Optional workspace directory.
-        timeout: Execution timeout in seconds (unused for streaming).
+        timeout: Execution timeout in seconds (reserved for signature compat).
         model: Optional model name.
 
     Yields:
@@ -243,4 +243,9 @@ async def stream_agy(
             logger.error(
                 f"agy stream exited with code {proc.returncode}",
                 extra={"stderr": stderr_text[:500]},
+            )
+            raise AgyProcessError(
+                f"agy streaming process exited with code {proc.returncode}",
+                proc.returncode or 1,
+                stderr_text,
             )

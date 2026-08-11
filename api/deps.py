@@ -1,5 +1,4 @@
-"""FastAPI dependency injection helpers."""
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from core.session_manager import SessionManager
 
@@ -13,4 +12,7 @@ def get_session_manager(request: Request) -> SessionManager:
     Returns:
         The SessionManager instance.
     """
-    return request.app.state.session_manager
+    manager = getattr(request.app.state, "session_manager", None)
+    if manager is None:
+        raise HTTPException(status_code=503, detail="SessionManager not initialized")
+    return manager

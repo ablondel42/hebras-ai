@@ -73,15 +73,18 @@ class CommandMemoryStore:
             try:
                 data = json.loads(self.file_path.read_text(encoding="utf-8"))
                 for item in data.get("rules", []):
-                    rule = CommandRule(**item)
-                    # Deduplicate or update existing rule
-                    existing = next((r for r in self.rules if r.pattern == rule.pattern), None)
-                    if existing:
-                        existing.hang_count = max(existing.hang_count, rule.hang_count)
-                        existing.description = rule.description
-                    else:
-                        self.rules.append(rule)
-            except Exception as e:
+                    try:
+                        rule = CommandRule(**item)
+                        # Deduplicate or update existing rule
+                        existing = next((r for r in self.rules if r.pattern == rule.pattern), None)
+                        if existing:
+                            existing.hang_count = max(existing.hang_count, rule.hang_count)
+                            existing.description = rule.description
+                        else:
+                            self.rules.append(rule)
+                    except (TypeError, KeyError) as e:
+                        logger.warning(f"Skipping malformed command rule from {self.file_path}: {e}")
+            except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Failed to load command memory store from {self.file_path}: {e}")
 
         # Ensure directory and initial file exist

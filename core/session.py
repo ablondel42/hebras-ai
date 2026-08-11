@@ -1,9 +1,12 @@
-"""AgySession: tracks conversation state for multi-turn interactions."""
+from __future__ import annotations
 import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from core.agy_interactive import InteractiveSession
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +24,7 @@ class AgySession:
     conversation_id: str | None = None  # agy's conversation UUID
     workspace: str | None = None
     mode: str = "headless"  # "headless" or "interactive"
-    interactive: Any = None  # InteractiveSession instance when mode="interactive"
+    interactive: InteractiveSession | None = None  # InteractiveSession instance when mode="interactive"
     created_at: float = field(default_factory=time.monotonic)
     last_active: float = field(default_factory=time.monotonic)
     turn_count: int = 0

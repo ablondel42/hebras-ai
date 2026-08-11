@@ -79,7 +79,7 @@ class SessionManager:
             SessionPoolFull: If the pool has reached max capacity.
         """
         async with self._lock:
-            self._evict_expired()
+            await self._evict_expired()
             if len(self._sessions) >= self._max_sessions:
                 raise SessionPoolFull(
                     f"Session pool full ({self._max_sessions} max). "
@@ -109,20 +109,25 @@ class SessionManager:
         Raises:
             SessionNotFound: If the session doesn't exist or has expired.
         """
-        session = self._sessions.get(session_id)
-        if not session:
-            for s in self._sessions.values():
-                if s.conversation_id == session_id:
-                    session = s
-                    break
+        async with self._lock:
+            session = self._sessions.get(session_id)
+            if not session:
+                for s in self._sessions.values():
+                    if s.conversation_id == session_id:
+                        session = s
+                        break
 
-        if not session:
-            raise SessionNotFound(f"Session {session_id} not found")
-        if session.is_expired(self._idle_timeout):
-            if session.session_id in self._sessions:
-                del self._sessions[session.session_id]
-            raise SessionNotFound(f"Session {session_id} expired")
-        return session
+            if not session:
+                raise SessionNotFound(f"Session {session_id} not found")
+            if session.is_expired(self._idle_timeout):
+                if session.session_id in self._sessions:
+                    del self._sessions[session.session_id]
+                    try:
+                        await session.cleanup()
+                    except Exception as e:
+                        logger.warning(f"Error cleaning up expired session {session.session_id}: {e}")
+                raise SessionNotFound(f"Session {session_id} expired")
+            return session
 
     async def delete_session(self, session_id: str) -> None:
         """Explicitly delete a session.
@@ -138,10 +143,11 @@ class SessionManager:
 
     async def list_sessions(self) -> list[AgySession]:
         """List all active (non-expired) sessions."""
-        self._evict_expired()
-        return list(self._sessions.values())
+        async with self._lock:
+            await self._evict_expired()
+            return list(self._sessions.values())
 
-    def _evict_expired(self) -> None:
+    async def _evict_expired(self) -> None:
         """Remove expired sessions from the pool."""
         expired = [
             sid for sid, s in self._sessions.items()
@@ -149,8 +155,10 @@ class SessionManager:
         ]
         for sid in expired:
             session = self._sessions.pop(sid)
-            if session.interactive is not None:
-                asyncio.create_task(session.cleanup())
+            try:
+                await session.cleanup()
+            except Exception as e:
+                logger.warning(f"Error cleaning up expired session {sid}: {e}")
             logger.info(f"Evicted expired session {sid}")
 
     async def _cleanup_loop(self) -> None:
@@ -158,4 +166,4 @@ class SessionManager:
         while True:
             await asyncio.sleep(60)  # Check every minute
             async with self._lock:
-                self._evict_expired()
+                await self._evict_expired()
