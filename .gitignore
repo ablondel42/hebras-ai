@@ -57,6 +57,8 @@ Thumbs.db
 
 # Project specific
 *.log
+log/
+logs/
 *.sqlite3
 *.db
 

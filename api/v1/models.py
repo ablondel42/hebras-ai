@@ -1,0 +1,63 @@
+"""GET /v1/models — Discover available agents as OpenAI-compatible models."""
+import logging
+from pathlib import Path
+
+from fastapi import APIRouter
+
+from core.config import settings
+from core.types import ModelInfo, ModelListResponse
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _discover_agents() -> list[ModelInfo]:
+    """Scan .agents/agents/ directory for available agent configs.
+
+    Each subdirectory containing a .md file becomes a model.
+    Model IDs are prefixed with 'hebras-'.
+
+    Returns:
+        List of ModelInfo objects for discovered agents.
+    """
+    agents_dir = Path(settings.agy_agents_dir)
+    models: list[ModelInfo] = []
+
+    if not agents_dir.exists():
+        logger.warning(f"Agents directory not found: {agents_dir}")
+        return models
+
+    for agent_dir in sorted(agents_dir.iterdir()):
+        if agent_dir.is_dir():
+            # Check for a .md config file
+            md_files = list(agent_dir.glob("*.md"))
+            if md_files:
+                agent_name = agent_dir.name
+                models.append(
+                    ModelInfo(
+                        id=f"hebras-{agent_name}",
+                        created=int(agent_dir.stat().st_mtime),
+                        owned_by="hebras-ai",
+                    )
+                )
+
+    return models
+
+
+@router.get("/models")
+async def list_models() -> ModelListResponse:
+    """List available models (discovered from .agents/agents/).
+
+    Scans the agents directory and returns each configured agent
+    as an OpenAI-compatible model entry.
+    """
+    models = _discover_agents()
+    if not models:
+        logger.warning("No agents discovered, returning default model")
+        models = [
+            ModelInfo(
+                id=f"hebras-{settings.agy_default_agent}",
+                owned_by="hebras-ai",
+            )
+        ]
+    return ModelListResponse(data=models)
