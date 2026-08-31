@@ -16,7 +16,7 @@ from typing import Any
 
 import pexpect
 
-from core.config import settings
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ RESPONSE_TIMEOUT = 180  # seconds
 
 class InteractiveSessionError(Exception):
     """Raised when interactive session execution fails."""
-    pass
 
 
 class InteractiveSession:

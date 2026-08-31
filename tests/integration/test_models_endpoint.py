@@ -1,5 +1,4 @@
 """Integration tests for GET /v1/models."""
-import pytest
 
 
 class TestModelsEndpoint:
@@ -31,7 +30,7 @@ class TestModelsEndpoint:
         agent_dir.mkdir()
         (agent_dir / "code_reviewer.md").write_text("---\nname: code_reviewer\n---\nPrompt")
 
-        monkeypatch.setattr("api.v1.models.settings.agy_agents_dir", str(tmp_path))
+        monkeypatch.setattr("backend.routes.models.settings.agy_agents_dir", str(tmp_path))
 
         resp = await client.get("/v1/models")
         assert resp.status_code == 200

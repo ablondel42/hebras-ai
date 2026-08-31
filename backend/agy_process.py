@@ -3,12 +3,12 @@ import asyncio
 import json
 import logging
 import os
-import time
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
-from core.config import settings
-from core.safe_runner import safe_run_command
+from backend.config import settings
+from backend.safe_runner import safe_run_command
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _build_command(
 
     Args:
         prompt: The user prompt to send to agy.
-        agent: The agent name to use (e.g., 'read').
+        agent: The agent name to use (e.g., 'default').
         output_format: Output format ('json' or 'stream-json').
         json_schema: Optional JSON schema to enforce on output.
         conversation_id: Optional conversation ID for multi-turn.
@@ -108,7 +108,6 @@ async def run_agy(
         "Executing agy (non-streaming)",
         extra={"agent": agent, "conversation_id": conversation_id, "model": model},
     )
-    start = time.monotonic()
 
     res = await safe_run_command(
         cmd,
@@ -123,7 +122,6 @@ async def run_agy(
             "agent": agent,
             "conversation_id": conversation_id,
             "duration_ms": res.duration_ms,
-            "mitigated": res.was_mitigated,
         },
     )
 

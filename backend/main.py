@@ -1,16 +1,20 @@
-"""FastAPI application factory with lifespan management."""
+"""FastAPI application factory and ASGI entry point for hebras-ai backend."""
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.logging_config import setup_logging
-from core.session_manager import SessionManager
+from backend.config import settings
+from backend.logging_config import setup_logging
+from backend.routes.chat import router as chat_router
+from backend.routes.models import router as models_router
+from backend.session_manager import SessionManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown lifecycle for the FastAPI app."""
+    """Startup and shutdown lifecycle for the FastAPI application."""
     setup_logging()
     session_manager = SessionManager()
     await session_manager.start()
@@ -23,7 +27,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application.
 
     Returns:
-        Configured FastAPI app with all routers and middleware.
+        Configured FastAPI app with all routers, middleware, and lifespan.
     """
     app = FastAPI(
         title="hebras-ai",
@@ -47,16 +51,25 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Import and register routers
-    from api.v1.chat import router as chat_router
-    from api.v1.models import router as models_router
-
+    # Register API routers under /v1
     app.include_router(chat_router, prefix="/v1")
     app.include_router(models_router, prefix="/v1")
 
-    # Keep legacy root endpoint
+    # Root endpoint for health check and version
     @app.get("/")
     async def root():
         return {"message": "hebras-ai", "version": "0.1.0"}
 
     return app
+
+
+# Default ASGI app instance for uvicorn (e.g. `uvicorn backend.main:app`)
+app = create_app()
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "backend.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True,
+    )

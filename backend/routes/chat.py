@@ -5,20 +5,19 @@ import time
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from api.deps import get_session_manager
-from core.agy_interactive import InteractiveSession, InteractiveSessionError
-from core.agy_process import AgyProcessError, run_agy, stream_agy
-from core.config import settings
-from core.session import AgySession
-from core.session_manager import SessionManager, SessionNotFound, SessionPoolFull
-from core.types import (
+from backend.agy_interactive import InteractiveSession, InteractiveSessionError
+from backend.agy_process import AgyProcessError, run_agy, stream_agy
+from backend.config import settings
+from backend.session import AgySession
+from backend.session_manager import SessionManager, SessionNotFound, SessionPoolFull
+from backend.types import (
     ChatCompletionChunk,
+    ChatCompletionMessage,
     ChatCompletionRequest,
     ChatCompletionResponse,
-    ChatCompletionMessage,
     Choice,
     DeltaContent,
     StreamChoice,
@@ -27,6 +26,14 @@ from core.types import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def get_session_manager(request: Request) -> SessionManager:
+    """Dependency helper to get SessionManager from app state."""
+    manager = getattr(request.app.state, "session_manager", None)
+    if manager is None:
+        raise HTTPException(status_code=503, detail="SessionManager not initialized")
+    return manager
 
 
 def _extract_prompt_and_system(request: ChatCompletionRequest) -> tuple[str, str | None]:
@@ -181,7 +188,7 @@ async def _handle_non_streaming(
         raise HTTPException(status_code=502, detail=f"AGY execution failed: {e}")
 
     # Update session with conversation_id from agy response
-    if "conversation_id" in result and result["conversation_id"]:
+    if result.get("conversation_id"):
         session.conversation_id = result["conversation_id"]
 
     # Extract response text
@@ -398,4 +405,3 @@ async def _handle_interactive(
         usage=UsageInfo(),
         system_fingerprint=session.session_id,
     )
-

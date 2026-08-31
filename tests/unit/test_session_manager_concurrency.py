@@ -1,7 +1,9 @@
 """Unit tests verifying SessionManager lock protection and PTY cleanup behavior."""
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from core.session_manager import SessionManager, SessionNotFound
+
+from backend.session_manager import SessionManager, SessionNotFound
 
 
 class TestSessionManagerConcurrency:

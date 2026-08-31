@@ -1,6 +1,5 @@
 """Integration tests for POST /v1/chat/completions."""
 import json
-import pytest
 from unittest.mock import AsyncMock, patch
 
 
@@ -20,7 +19,7 @@ class TestChatCompletionsNonStreaming:
             },
         }
 
-        with patch("api.v1.chat.run_agy", new_callable=AsyncMock, return_value=mock_result):
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result):
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
@@ -49,7 +48,7 @@ class TestChatCompletionsNonStreaming:
             "usage": {},
         }
 
-        with patch("api.v1.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
@@ -81,10 +80,10 @@ class TestChatCompletionsNonStreaming:
 
     async def test_agy_error_returns_502(self, client):
         """Test that agy process errors return 502."""
-        from core.agy_process import AgyProcessError
+        from backend.agy_process import AgyProcessError
 
         with patch(
-            "api.v1.chat.run_agy",
+            "backend.routes.chat.run_agy",
             new_callable=AsyncMock,
             side_effect=AgyProcessError("agy failed", 1, "error output"),
         ):
@@ -105,7 +104,7 @@ class TestChatCompletionsNonStreaming:
             "usage": {},
         }
 
-        with patch("api.v1.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
             await client.post(
                 "/v1/chat/completions",
                 json={
@@ -125,7 +124,7 @@ class TestChatCompletionsNonStreaming:
             "usage": {},
         }
 
-        with patch("api.v1.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
@@ -149,7 +148,7 @@ class TestChatCompletionsStreaming:
             yield {"event": "step_update", "step_update": {"text_delta": " world"}}
             yield {"event": "result", "result": {"status": "SUCCESS", "usage": {}}}
 
-        with patch("api.v1.chat.stream_agy", side_effect=mock_stream):
+        with patch("backend.routes.chat.stream_agy", side_effect=mock_stream):
             resp = await client.post(
                 "/v1/chat/completions",
                 json={

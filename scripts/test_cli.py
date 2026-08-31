@@ -3,13 +3,12 @@
 hebras-ai Interactive Test CLI
 
 A minimal command-line tool for testing the hebras-ai API server.
-Start the server first:  uvicorn api.main:app --reload --port 8000
+Start the server first:  uvicorn backend.main:app --reload --port 8000
 Then run this:           python3 test_cli.py
 """
 import json
-import sys
+
 import httpx
-import readline  # enables arrow keys and history in input()
 
 # ── Configuration ────────────────────────────────────────────────
 
@@ -138,7 +137,7 @@ def cmd_chat(message: str, agent: str, system_prompt: str | None = None, stream:
             return _handle_non_stream(payload)
     except httpx.ConnectError:
         print(f"{RED}Error: Cannot connect to server at {BASE_URL}{RESET}")
-        print(f"{YELLOW}Make sure the server is running: uvicorn api.main:app --reload --port 8000{RESET}")
+        print(f"{YELLOW}Make sure the server is running: uvicorn backend.main:app --reload --port 8000{RESET}")
         return None
     except Exception as e:
         print(f"{RED}Error: {e}{RESET}")
@@ -278,7 +277,7 @@ def main():
     # Check server
     if not check_server():
         print(f"{YELLOW}⚠  Server not reachable at {BASE_URL}{RESET}")
-        print(f"{DIM}Start it with: uvicorn api.main:app --reload --port 8000{RESET}\n")
+        print(f"{DIM}Start it with: uvicorn backend.main:app --reload --port 8000{RESET}\n")
 
     current_agent = DEFAULT_AGENT
     system_prompt = None

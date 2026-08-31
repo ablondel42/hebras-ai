@@ -3,20 +3,18 @@ import asyncio
 import logging
 from typing import Any
 
-from core.config import settings
-from core.session import AgySession
+from backend.config import settings
+from backend.session import AgySession
 
 logger = logging.getLogger(__name__)
 
 
 class SessionPoolFull(Exception):
     """Raised when the session pool has reached max capacity."""
-    pass
 
 
 class SessionNotFound(Exception):
     """Raised when a requested session doesn't exist or has expired."""
-    pass
 
 
 class SessionManager:

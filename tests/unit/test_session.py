@@ -1,7 +1,7 @@
 """Tests for AgySession."""
 import time
-import pytest
-from core.session import AgySession
+
+from backend.session import AgySession
 
 
 class TestAgySession:

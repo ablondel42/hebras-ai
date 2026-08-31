@@ -6,7 +6,7 @@ Welcome to **hebras-ai**. This document provides essential architectural context
 
 ## 1. Project Overview
 
-`hebras-ai` is an **OpenAI-compatible REST API server** built on top of [FastAPI](https://fastapi.tiangolo.com/) that acts as an adapter layer over Google Antigravity (`agy` CLI binary).
+`hebras-ai` is an **OpenAI-compatible REST API backend** built on top of [FastAPI](https://fastapi.tiangolo.com/) that acts as an adapter layer over Google Antigravity (`agy` CLI binary).
 
 ### Key Purposes:
 - **Standardized Interface**: Exposes OpenAI-compatible endpoints (`/v1/chat/completions` and `/v1/models`) so external clients, LLM orchestration frameworks (e.g. LlamaIndex, LangChain, OpenAI Python SDK), and web frontends can seamlessly interface with local `agy` agents.
@@ -24,29 +24,29 @@ Welcome to **hebras-ai**. This document provides essential architectural context
 
 ```mermaid
 flowchart TD
-    Client["Client / SDK / LlamaIndex / Test CLI"] -->|HTTP POST /v1/chat/completions| FastAPI["FastAPI App (api/app.py)"]
-    FastAPI --> ChatRouter["Chat Router (api/v1/chat.py)"]
-    ChatRouter --> SessionMgr["SessionManager (core/session_manager.py)"]
+    Client["Client / SDK / LlamaIndex / Test CLI"] -->|HTTP POST /v1/chat/completions| FastAPI["FastAPI App (backend/main.py)"]
+    FastAPI --> ChatRouter["Chat Router (backend/routes/chat.py)"]
+    ChatRouter --> SessionMgr["SessionManager (backend/session_manager.py)"]
 
     ChatRouter -->|Interactive Mode: request.interactive = true| PTYHandler["_handle_interactive()"]
     ChatRouter -->|Stream: true| StreamHandler["_handle_streaming()"]
     ChatRouter -->|Non-Streaming| SyncHandler["_handle_non_streaming()"]
 
-    PTYHandler --> InteractiveSession["InteractiveSession (core/agy_interactive.py)"]
+    PTYHandler --> InteractiveSession["InteractiveSession (backend/agy_interactive.py)"]
     InteractiveSession -->|Spawn PTY / send \\r| AgyPTY["agy Process (PTY / pexpect)"]
     AgyPTY -->|Write structured log| Transcript["transcript_full.jsonl"]
     InteractiveSession -->|Poll for MODEL PLANNER_RESPONSE| Transcript
 
-    StreamHandler --> StreamAgy["stream_agy() (core/agy_process.py)"]
+    StreamHandler --> StreamAgy["stream_agy() (backend/agy_process.py)"]
     StreamAgy -->|Subprocess --output-format stream-json| AgyStreamProc["agy Subprocess"]
     StreamAgy -->|SSE ChatCompletionChunk data: ...| Client
 
-    SyncHandler --> RunAgy["run_agy() (core/agy_process.py)"]
-    RunAgy --> SafeRunner["safe_run_command() (core/safe_runner.py)"]
+    SyncHandler --> RunAgy["run_agy() (backend/agy_process.py)"]
+    RunAgy --> SafeRunner["safe_run_command() (backend/safe_runner.py)"]
     SafeRunner -->|Subprocess --output-format json| AgyProc["agy Subprocess"]
     SyncHandler -->|ChatCompletionResponse JSON| Client
 
-    FastAPI -->|HTTP GET /v1/models| ModelsRouter["Models Router (api/v1/models.py)"]
+    FastAPI -->|HTTP GET /v1/models| ModelsRouter["Models Router (backend/routes/models.py)"]
     ModelsRouter -->|Scan .agents/agents/*/| AgentConfigs[".agents/agents/ (.md files)"]
 ```
 
@@ -70,44 +70,31 @@ hebras-ai/
 ├── requirements.txt               # Requirements export
 ├── docker-compose.yml             # Docker deployment configuration
 │
-├── api/                           # API Layer (FastAPI)
+├── backend/                       # Backend Application Package
 │   ├── __init__.py
-│   ├── app.py                     # App factory (`create_app`), CORS, lifespan management
-│   ├── deps.py                    # FastAPI dependencies (SessionManager injection)
-│   ├── main.py                    # ASGI app instance for uvicorn (`uvicorn api.main:app`)
-│   └── v1/
-│       ├── __init__.py
-│       ├── chat.py                # POST /v1/chat/completions endpoint
-│       └── models.py              # GET /v1/models dynamic agent discovery
-│
-├── app/                           # CLI entry points
-│   ├── __init__.py
-│   └── main.py                    # Runnable module (`python -m app.main`)
-│
-├── core/                          # Core Orchestration Engine
-│   ├── __init__.py
-│   ├── agy_interactive.py         # InteractiveSession: persistent PTY via pexpect & transcript sync
-│   ├── agy_process.py             # Subprocess execution: `run_agy` (JSON) and `stream_agy` (NDJSON)
-│   ├── ansi_utils.py              # ANSI stripping and TUI chrome/spinner/banner extraction
+│   ├── main.py                    # App factory (`create_app`), lifespan, CORS, entry point
 │   ├── config.py                  # Settings (BaseSettings) reading dev.env / HEBRAS_* env vars
-│   ├── logging_config.py          # Structured JSON log formatter
-│   ├── safe_runner.py             # Process isolation, timeouts, and stdin protection (DEVNULL)
+│   ├── types.py                   # Pydantic models for OpenAI request/response/streaming formats
 │   ├── session.py                 # AgySession dataclass (turn count, timestamps, model IDs)
 │   ├── session_manager.py         # SessionManager pool: concurrency lock, max limit, auto-expiry
-│   └── types.py                   # Pydantic models for OpenAI request/response/streaming formats
+│   ├── safe_runner.py             # Process isolation, timeouts, and stdin protection (DEVNULL)
+│   ├── agy_process.py             # Subprocess execution: `run_agy` (JSON) and `stream_agy` (NDJSON)
+│   ├── agy_interactive.py         # InteractiveSession: persistent PTY via pexpect & transcript sync
+│   ├── ansi_utils.py              # ANSI stripping and TUI chrome/spinner/banner extraction
+│   ├── logging_config.py          # Structured JSON log formatter
+│   └── routes/                    # API Route Definitions
+│       ├── __init__.py
+│       ├── chat.py                # POST /v1/chat/completions endpoint
+│       └── models.py              # GET /v1/models dynamic agent discovery & GET / root
 │
 ├── integrations/                  # Framework Integrations
 │   ├── __init__.py
 │   └── hebras_llm.py              # LlamaIndex CustomLLM & FunctionCallingLLM implementation
 │
-├── schemas/                       # Shared JSON schemas
-│   ├── __init__.py
-│   └── init_session_schema.py     # JSON Schema specification for session initialization
-│
 ├── scripts/                       # Developer & Test Tools
 │   └── test_cli.py                # Interactive CLI tool to test chat, stream, schema, multi-turn
 │
-├── .agents/                       # Project-level custom agents
+├── .agents/                       # Custom Agent Configurations
 │   ├── __init__.py
 │   └── agents/                    # User custom agent definitions (<name>/<name>.md)
 │       └── .gitkeep
@@ -160,7 +147,7 @@ You are my custom agent prompt instructions...
 
 ## 5. Configuration & Environment Variables
 
-Settings are managed in `core/config.py` using `pydantic-settings`. They can be loaded from `dev.env` or from environment variables prefixed with `HEBRAS_`.
+Settings are managed in `backend/config.py` using `pydantic-settings`. They can be loaded from `dev.env` or from environment variables prefixed with `HEBRAS_`.
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -195,10 +182,10 @@ source .venv/bin/activate
 ### 2. Running the API Server
 ```bash
 # Using uvicorn with hot reload
-uvicorn api.main:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8000
 
-# Or using the app entry point
-python -m app.main
+# Or using the backend entry point directly
+python -m backend.main
 ```
 
 ### 3. Running Automated Tests
@@ -265,8 +252,8 @@ When implementing changes or adding features to this codebase, you MUST adhere t
 - Never perform blocking synchronous I/O operations directly inside async route handlers.
 
 ### Rule 4: Pydantic v2 Compatibility
-- All data models in `core/types.py` use Pydantic v2. Use `model_dump_json()`, `model_dump()`, and `model_config = {"populate_by_name": True}`.
+- All data models in `backend/types.py` use Pydantic v2. Use `model_dump_json()`, `model_dump()`, and `model_config = {"populate_by_name": True}`.
 
 ### Rule 5: Keep Documentation Synchronized
-- If you add new configuration variables, update `core/config.py` and document them in `AGENTS.md`.
+- If you add new configuration variables, update `backend/config.py` and document them in `AGENTS.md`.
 - If you add new agents or routes, update the architecture section and file maps accordingly.

@@ -1,7 +1,7 @@
 """Unit tests for safe_run_command process execution engine."""
 import sys
-import pytest
-from core.safe_runner import safe_run_command
+
+from backend.safe_runner import safe_run_command
 
 
 class TestSafeRunner:

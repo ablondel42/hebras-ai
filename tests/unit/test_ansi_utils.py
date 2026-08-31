@@ -1,6 +1,5 @@
 """Tests for ANSI sequence stripping and TUI text extraction."""
-import pytest
-from core.ansi_utils import strip_ansi, extract_response_text
+from backend.ansi_utils import extract_response_text, strip_ansi
 
 
 class TestStripAnsi:

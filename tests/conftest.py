@@ -1,8 +1,9 @@
 """Shared test fixtures for hebras-ai."""
 import pytest
 from httpx import ASGITransport, AsyncClient
-from api.app import create_app
-from core.session_manager import SessionManager
+
+from backend.main import create_app
+from backend.session_manager import SessionManager
 
 
 @pytest.fixture

@@ -1,19 +1,15 @@
 """Tests for OpenAI-compatible type models."""
-import pytest
-from core.types import (
+from backend.types import (
+    ChatCompletionChunk,
+    ChatCompletionMessage,
     ChatCompletionRequest,
     ChatCompletionResponse,
-    ChatCompletionChunk,
-    ChatMessage,
     Choice,
-    ChatCompletionMessage,
     DeltaContent,
-    StreamChoice,
-    UsageInfo,
-    ResponseFormat,
-    JsonSchemaFormat,
     ModelInfo,
     ModelListResponse,
+    StreamChoice,
+    UsageInfo,
 )
 
 

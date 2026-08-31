@@ -1,6 +1,6 @@
 """ANSI escape sequence processing and text extraction for agy TUI output."""
-import re
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 

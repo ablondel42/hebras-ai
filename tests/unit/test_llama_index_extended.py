@@ -1,8 +1,9 @@
 """Extended unit tests for HebrasLLM custom methods and edge cases."""
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from integrations.hebras_llm import HebrasLLM
-from llama_index.core.llms import CompletionResponse
 
 
 class TestHebrasLLMExtended:

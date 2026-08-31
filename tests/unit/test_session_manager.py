@@ -1,6 +1,7 @@
 """Tests for SessionManager."""
 import pytest
-from core.session_manager import SessionManager, SessionPoolFull, SessionNotFound
+
+from backend.session_manager import SessionManager, SessionNotFound, SessionPoolFull
 
 
 @pytest.fixture

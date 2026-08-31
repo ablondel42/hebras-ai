@@ -72,7 +72,7 @@ async def safe_run_command(
             duration_ms=duration_ms,
         )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         duration_ms = int((time.monotonic() - start) * 1000)
         logger.error(f"Command timed out after {timeout}s: '{cmd_str}'")
 

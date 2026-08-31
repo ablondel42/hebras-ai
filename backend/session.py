@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import time
 import uuid
@@ -6,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from core.agy_interactive import InteractiveSession
+    from backend.agy_interactive import InteractiveSession
 
 logger = logging.getLogger(__name__)
 

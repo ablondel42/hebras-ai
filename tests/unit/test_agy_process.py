@@ -1,7 +1,5 @@
 """Tests for agy process command building."""
-import pytest
-from unittest.mock import patch
-from core.agy_process import _build_command
+from backend.agy_process import _build_command
 
 
 class TestBuildCommand:

@@ -4,8 +4,8 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
-from core.config import settings
-from core.types import ModelInfo, ModelListResponse
+from backend.config import settings
+from backend.types import ModelInfo, ModelListResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

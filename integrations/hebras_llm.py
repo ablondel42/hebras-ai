@@ -5,11 +5,9 @@ hebras-ai (and its agy backend) as a remote LLM provider.
 """
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
-from pydantic import Field
-
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.llms import (
     CompletionResponse,
@@ -19,6 +17,7 @@ from llama_index.core.llms import (
 )
 from llama_index.core.llms.callbacks import llm_completion_callback
 from llama_index.core.llms.function_calling import FunctionCallingLLM
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +32,12 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
     api_base: str = Field(default="http://localhost:8000/v1", description="hebras-ai API base URL")
     agent: str = Field(default="default", description="agy agent name (e.g. default, code_writer)")
     interactive: bool = Field(default=False, description="Whether to use persistent interactive PTY session")
-    mode: Optional[str] = Field(default=None, description="agy execution mode (e.g. plan, accept-edits)")
+    mode: str | None = Field(default=None, description="agy execution mode (e.g. plan, accept-edits)")
     dangerously_skip_permissions: bool = Field(default=False, description="Explicit opt-in to auto-approve tool execution")
     context_window: int = Field(default=131072, description="Context window size")
     num_output: int = Field(default=4096, description="Max generation tokens")
     model_name: str = Field(default="default", description="Model name identifier")
-    conversation_id: Optional[str] = Field(default=None, description="Active session conversation ID")
+    conversation_id: str | None = Field(default=None, description="Active session conversation ID")
     timeout: float = Field(default=180.0, description="HTTP timeout in seconds")
 
     def __init__(self, set_as_default: bool = False, **data: Any):
@@ -140,7 +139,7 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
                         if data_str == "[DONE]":
                             break
                         chunk_data = json.loads(data_str)
-                        if "system_fingerprint" in chunk_data and chunk_data["system_fingerprint"]:
+                        if chunk_data.get("system_fingerprint"):
                             self.conversation_id = chunk_data["system_fingerprint"]
 
                         choices = chunk_data.get("choices", [])
@@ -176,6 +175,7 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
 
 if __name__ == "__main__":
     import asyncio
+
     from llama_index.core.agent.workflow import FunctionAgent
 
     llm = HebrasLLM(
