@@ -1,4 +1,4 @@
-"""OpenAI-compatible request and response Pydantic models."""
+"""OpenAI-compatible request and response Pydantic models with clear Agent & Model separation."""
 from __future__ import annotations
 
 import time
@@ -36,8 +36,9 @@ class ResponseFormat(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    """OpenAI-compatible chat completion request."""
-    model: str = "default"
+    """OpenAI-compatible chat completion request with explicit model and agent fields."""
+    model: str | None = None  # Underlying LLM (e.g. "Gemini 3.6 Flash (High)")
+    agent: str | None = None  # Persona / config profile (e.g. "default", "code_reviewer")
     messages: list[ChatMessage]
     temperature: float | None = None
     top_p: float | None = None
@@ -89,6 +90,7 @@ class ChatCompletionResponse(BaseModel):
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
+    agent: str | None = None
     choices: list[Choice]
     usage: UsageInfo
     system_fingerprint: str | None = None
@@ -116,6 +118,7 @@ class ChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int
     model: str
+    agent: str | None = None
     choices: list[StreamChoice]
     usage: UsageInfo | None = None
     system_fingerprint: str | None = None
@@ -125,14 +128,34 @@ class ChatCompletionChunk(BaseModel):
 
 
 class ModelInfo(BaseModel):
-    """Information about a single model."""
+    """Information about a supported foundational LLM model."""
     id: str
     object: str = "model"
     created: int = 0
-    owned_by: str = "hebras-ai"
+    owned_by: str = "google"
 
 
 class ModelListResponse(BaseModel):
     """Response for GET /v1/models."""
     object: str = "list"
     data: list[ModelInfo]
+
+
+# ── Agents Endpoint ─────────────────────────────────────────────
+
+
+class AgentInfo(BaseModel):
+    """Information about a discovered agent persona."""
+    id: str
+    name: str
+    description: str | None = None
+    tools: list[str] | None = None
+    command_execution_policy: str | None = None
+    created: int = 0
+    object: str = "agent"
+
+
+class AgentListResponse(BaseModel):
+    """Response for GET /v1/agents."""
+    object: str = "list"
+    data: list[AgentInfo]

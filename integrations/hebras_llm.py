@@ -51,6 +51,7 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
         """Build request payload."""
         payload: dict[str, Any] = {
             "model": self.model_name,
+            "agent": self.agent,
             "messages": [{"role": "user", "content": prompt}],
             "interactive": self.interactive,
             "dangerously_skip_permissions": self.dangerously_skip_permissions,

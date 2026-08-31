@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     agy_binary: str = "agy"
     agy_default_agent: str = "default"
     agy_default_model: str = "Gemini 3.6 Flash (High)"
+    agy_available_models: list[str] = [
+        "Gemini 3.6 Flash (High)",
+        "Gemini 3.5 Pro",
+        "Gemini 3.5 Flash",
+        "Claude 3.7 Sonnet",
+        "Claude 3.5 Sonnet",
+        "GPT-4o",
+    ]
     agy_default_timeout: int = 120
     agy_default_workspace: str = "."
     agy_agents_dir: str = ".agents/agents"

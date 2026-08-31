@@ -23,7 +23,8 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "default",
+                    "model": "Gemini 3.6 Flash (High)",
+                    "agent": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                     "stream": False,
                 },
@@ -32,7 +33,8 @@ class TestChatCompletionsNonStreaming:
         assert resp.status_code == 200
         data = resp.json()
         assert data["object"] == "chat.completion"
-        assert data["model"] == "default"
+        assert data["model"] == "Gemini 3.6 Flash (High)"
+        assert data["agent"] == "default"
         assert data["choices"][0]["message"]["content"] == "Hello! How can I help?"
         assert data["choices"][0]["message"]["role"] == "assistant"
         assert data["choices"][0]["finish_reason"] == "stop"
@@ -52,7 +54,7 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "default",
+                    "agent": "default",
                     "messages": [
                         {"role": "system", "content": "You are helpful."},
                         {"role": "user", "content": "Hi"},
@@ -72,7 +74,7 @@ class TestChatCompletionsNonStreaming:
         resp = await client.post(
             "/v1/chat/completions",
             json={
-                "model": "default",
+                "agent": "default",
                 "messages": [{"role": "system", "content": "Be helpful"}],
             },
         )
@@ -90,14 +92,40 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "default",
+                    "agent": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                 },
             )
         assert resp.status_code == 502
 
-    async def test_agent_extraction_from_model(self, client):
-        """Test that model name is correctly mapped to agent."""
+    async def test_explicit_agent_and_model(self, client):
+        """Test passing both agent and model explicitly."""
+        mock_result = {
+            "conversation_id": "test-conv",
+            "response": "ok",
+            "usage": {},
+        }
+
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+            resp = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "agent": "code_reviewer",
+                    "model": "Claude 3.7 Sonnet",
+                    "messages": [{"role": "user", "content": "Hi"}],
+                },
+            )
+
+        assert resp.status_code == 200
+        call_args = mock.call_args
+        assert call_args.kwargs["agent"] == "code_reviewer"
+        assert call_args.kwargs["model"] == "Claude 3.7 Sonnet"
+        data = resp.json()
+        assert data["agent"] == "code_reviewer"
+        assert data["model"] == "Claude 3.7 Sonnet"
+
+    async def test_model_with_agent_name_compatibility(self, client):
+        """Test passing custom agent name in model field maps to agent with default model."""
         mock_result = {
             "conversation_id": "test-conv",
             "response": "ok",
@@ -115,9 +143,10 @@ class TestChatCompletionsNonStreaming:
 
         call_args = mock.call_args
         assert call_args.kwargs["agent"] == "custom-agent"
+        assert call_args.kwargs["model"] == "Gemini 3.6 Flash (High)"
 
-    async def test_missing_model_defaults_to_default_agent(self, client):
-        """Test that requests omitting the 'model' field default to settings.agy_default_agent."""
+    async def test_missing_fields_defaults(self, client):
+        """Test that requests omitting agent and model use settings defaults."""
         mock_result = {
             "conversation_id": "test-conv-raw",
             "response": "raw ok",
@@ -133,8 +162,10 @@ class TestChatCompletionsNonStreaming:
             )
 
         assert resp.status_code == 200
-        assert resp.json()["model"] == "default"
+        assert resp.json()["model"] == "Gemini 3.6 Flash (High)"
+        assert resp.json()["agent"] == "default"
         assert mock.call_args.kwargs["agent"] == "default"
+        assert mock.call_args.kwargs["model"] == "Gemini 3.6 Flash (High)"
 
 
 class TestChatCompletionsStreaming:
@@ -152,7 +183,7 @@ class TestChatCompletionsStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "default",
+                    "agent": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                     "stream": True,
                 },

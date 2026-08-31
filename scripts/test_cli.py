@@ -4,7 +4,7 @@ hebras-ai Interactive Test CLI
 
 A minimal command-line tool for testing the hebras-ai API server.
 Start the server first:  uvicorn backend.main:app --reload --port 8000
-Then run this:           python3 test_cli.py
+Then run this:           python3 scripts/test_cli.py
 """
 import json
 
@@ -12,8 +12,9 @@ import httpx
 
 # ── Configuration ────────────────────────────────────────────────
 
-BASE_URL = "http://localhost:8080"
+BASE_URL = "http://localhost:8000"
 DEFAULT_AGENT = "default"
+DEFAULT_MODEL = "Gemini 3.6 Flash (High)"
 
 # ── Colors ───────────────────────────────────────────────────────
 
@@ -43,8 +44,10 @@ def print_help():
     print(f"""
 {BOLD}Available commands:{RESET}
 
-  {GREEN}agents{RESET}                  List available agents
-  {GREEN}agent{RESET}  {DIM}<name>{RESET}          Switch active agent (e.g. default, coder)
+  {GREEN}agents{RESET}                  List available agent personas (GET /v1/agents)
+  {GREEN}agent{RESET}  {DIM}<name>{RESET}          Switch active agent persona (e.g. default, code_reviewer)
+  {GREEN}models{RESET}                  List available LLM models (GET /v1/models)
+  {GREEN}model{RESET}  {DIM}<name>{RESET}          Switch active LLM model (e.g. Gemini 3.6 Flash (High))
   {GREEN}chat{RESET}   {DIM}<message>{RESET}        Send a non-streaming chat message
   {GREEN}stream{RESET} {DIM}<message>{RESET}        Send a streaming chat message (SSE)
   {GREEN}schema{RESET} {DIM}<message>{RESET}        Send with JSON schema enforcement
@@ -62,7 +65,7 @@ def check_server():
     try:
         r = httpx.get(f"{BASE_URL}/", timeout=3)
         return r.status_code == 200
-    except httpx.ConnectError:
+    except (httpx.ConnectError, Exception):
         return False
 
 
@@ -73,46 +76,74 @@ def pretty_json(data):
 
 
 def print_response_meta(data):
-    """Print response metadata (agent, usage, id)."""
-    agent = data.get("model", "?")
+    """Print response metadata (agent, model, usage, id)."""
+    agent = data.get("agent", "?")
+    model = data.get("model", "?")
     usage = data.get("usage", {})
     comp_id = data.get("id", "?")
     prompt_t = usage.get("prompt_tokens", 0)
     comp_t = usage.get("completion_tokens", 0)
     total_t = usage.get("total_tokens", 0)
-    print(f"\n{DIM}── id: {comp_id}  agent: {agent}  tokens: {prompt_t}→{comp_t} ({total_t} total) ──{RESET}")
+    print(f"\n{DIM}── id: {comp_id}  agent: {agent}  model: {model}  tokens: {prompt_t}→{comp_t} ({total_t} total) ──{RESET}")
 
 
 # ── Commands ─────────────────────────────────────────────────────
 
+
 def cmd_agents():
-    """GET /v1/models (maps to agent listing)"""
-    print(f"\n{DIM}GET /v1/models (Listing Agents){RESET}")
+    """GET /v1/agents (Listing Agent Personas)"""
+    print(f"\n{DIM}GET /v1/agents (Listing Agent Personas){RESET}")
     try:
-        r = httpx.get(f"{BASE_URL}/v1/models", timeout=10)
+        r = httpx.get(f"{BASE_URL}/v1/agents", timeout=10)
         data = r.json()
-        models = data.get("data", [])
+        agents = data.get("data", [])
         print(f"\n{BOLD}Available Agents:{RESET}")
-        for m in models:
-            agent_name = m['id']
-            print(f"  {GREEN}•{RESET} {BOLD}{agent_name}{RESET}")
+        for a in agents:
+            name = a.get("id") or a.get("name")
+            desc = a.get("description")
+            desc_str = f" - {DIM}{desc}{RESET}" if desc else ""
+            print(f"  {GREEN}•{RESET} {BOLD}{name}{RESET}{desc_str}")
         return True
     except Exception as e:
         print(f"{RED}Error: {e}{RESET}")
         return False
 
 
-def cmd_chat(message: str, agent: str, system_prompt: str | None = None, stream: bool = False,
-             json_schema: dict | None = None, conversation_id: str | None = None):
+def cmd_models():
+    """GET /v1/models (Listing LLM Models)"""
+    print(f"\n{DIM}GET /v1/models (Listing LLM Models){RESET}")
+    try:
+        r = httpx.get(f"{BASE_URL}/v1/models", timeout=10)
+        data = r.json()
+        models = data.get("data", [])
+        print(f"\n{BOLD}Available Models:{RESET}")
+        for m in models:
+            name = m.get("id")
+            print(f"  {GREEN}•{RESET} {BOLD}{name}{RESET}")
+        return True
+    except Exception as e:
+        print(f"{RED}Error: {e}{RESET}")
+        return False
+
+
+def cmd_chat(
+    message: str,
+    agent: str,
+    model: str,
+    system_prompt: str | None = None,
+    stream: bool = False,
+    json_schema: dict | None = None,
+    conversation_id: str | None = None,
+):
     """POST /v1/chat/completions"""
-    model_id = agent
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": message})
 
     payload = {
-        "model": model_id,
+        "model": model,
+        "agent": agent,
         "messages": messages,
         "stream": stream,
     }
@@ -128,11 +159,11 @@ def cmd_chat(message: str, agent: str, system_prompt: str | None = None, stream:
         payload["conversation_id"] = conversation_id
 
     mode = "streaming" if stream else "non-streaming"
-    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, {mode}){RESET}")
+    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, model: {model}, {mode}){RESET}")
 
     try:
         if stream:
-            return _handle_stream(payload, agent)
+            return _handle_stream(payload, agent, model)
         else:
             return _handle_non_stream(payload)
     except httpx.ConnectError:
@@ -161,7 +192,7 @@ def _handle_non_stream(payload):
     return data
 
 
-def _handle_stream(payload, agent_name: str):
+def _handle_stream(payload, agent_name: str, model_name: str):
     """Handle SSE streaming response."""
     collected_content = ""
     final_data = None
@@ -201,7 +232,7 @@ def _handle_stream(payload, agent_name: str):
     comp_id = "?"
     if final_data:
         comp_id = final_data.get("id", "?")
-        print(f"\n{DIM}── id: {comp_id}  agent: {agent_name}  finish: stop ──{RESET}")
+        print(f"\n{DIM}── id: {comp_id}  agent: {agent_name}  model: {model_name}  finish: stop ──{RESET}")
 
     return {
         "id": comp_id,
@@ -210,9 +241,9 @@ def _handle_stream(payload, agent_name: str):
     }
 
 
-def cmd_multi_turn(agent: str, system_prompt: str | None = None):
+def cmd_multi_turn(agent: str, model: str, system_prompt: str | None = None):
     """Interactive multi-turn conversation."""
-    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}){RESET} {DIM}(type 'done' to exit){RESET}")
+    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}, model: {model}){RESET} {DIM}(type 'done' to exit){RESET}")
     conversation_id = None
     turn = 0
 
@@ -228,6 +259,7 @@ def cmd_multi_turn(agent: str, system_prompt: str | None = None):
         result = cmd_chat(
             message=user_input,
             agent=agent,
+            model=model,
             system_prompt=system_prompt if turn == 1 else None,
             conversation_id=conversation_id,
         )
@@ -271,6 +303,7 @@ def cmd_raw():
 
 # ── Main Loop ────────────────────────────────────────────────────
 
+
 def main():
     print_header()
 
@@ -280,11 +313,13 @@ def main():
         print(f"{DIM}Start it with: uvicorn backend.main:app --reload --port 8000{RESET}\n")
 
     current_agent = DEFAULT_AGENT
+    current_model = DEFAULT_MODEL
     system_prompt = None
 
     while True:
         try:
-            raw_input = input(f"{CYAN}hebras ({current_agent})>{RESET} ").strip()
+            prompt_str = f"{CYAN}hebras [{current_agent} | {current_model}]>{RESET} "
+            raw_input = input(prompt_str).strip()
         except (EOFError, KeyboardInterrupt):
             print(f"\n{DIM}Goodbye!{RESET}")
             break
@@ -309,15 +344,25 @@ def main():
             else:
                 print(f"{RED}✗ Server not reachable at {BASE_URL}{RESET}")
 
-        elif cmd in ("agents", "models"):
+        elif cmd in ("agents",):
             cmd_agents()
 
-        elif cmd in ("agent", "model"):
+        elif cmd in ("models",):
+            cmd_models()
+
+        elif cmd in ("agent",):
             if arg:
                 current_agent = arg.strip()
                 print(f"{GREEN}Switched agent to: {BOLD}{current_agent}{RESET}")
             else:
                 print(f"Active agent: {BOLD}{current_agent}{RESET}")
+
+        elif cmd in ("model",):
+            if arg:
+                current_model = arg.strip()
+                print(f"{GREEN}Switched model to: {BOLD}{current_model}{RESET}")
+            else:
+                print(f"Active model: {BOLD}{current_model}{RESET}")
 
         elif cmd == "system":
             if arg:
@@ -333,13 +378,13 @@ def main():
             if not arg:
                 print(f"{YELLOW}Usage: chat <message>{RESET}")
                 continue
-            cmd_chat(arg, current_agent, system_prompt)
+            cmd_chat(arg, current_agent, current_model, system_prompt)
 
         elif cmd == "stream":
             if not arg:
                 print(f"{YELLOW}Usage: stream <message>{RESET}")
                 continue
-            cmd_chat(arg, current_agent, system_prompt, stream=True)
+            cmd_chat(arg, current_agent, current_model, system_prompt, stream=True)
 
         elif cmd == "schema":
             if not arg:
@@ -353,17 +398,17 @@ def main():
                 },
                 "required": ["files", "summary"],
             }
-            cmd_chat(arg, current_agent, system_prompt, json_schema=file_list_schema)
+            cmd_chat(arg, current_agent, current_model, system_prompt, json_schema=file_list_schema)
 
         elif cmd == "multi":
-            cmd_multi_turn(current_agent, system_prompt)
+            cmd_multi_turn(current_agent, current_model, system_prompt)
 
         elif cmd == "raw":
             cmd_raw()
 
         else:
             # Treat unrecognized input as a chat message for convenience
-            cmd_chat(raw_input, current_agent, system_prompt)
+            cmd_chat(raw_input, current_agent, current_model, system_prompt)
 
 
 if __name__ == "__main__":

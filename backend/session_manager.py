@@ -59,14 +59,16 @@ class SessionManager:
 
     async def create_session(
         self,
-        agent: str,
+        agent: str | None = None,
+        model: str | None = None,
         workspace: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> AgySession:
         """Create a new session.
 
         Args:
-            agent: The agy agent name to use.
+            agent: The agy agent persona to use.
+            model: The underlying LLM model to use.
             workspace: Optional workspace directory path.
             metadata: Optional metadata dict to attach to the session.
 
@@ -84,14 +86,15 @@ class SessionManager:
                     "Close an existing session first."
                 )
             session = AgySession(
-                agent=agent,
+                agent=agent or settings.agy_default_agent,
+                model=model or settings.agy_default_model,
                 workspace=workspace,
                 metadata=metadata or {},
             )
             self._sessions[session.session_id] = session
             logger.info(
                 f"Created session {session.session_id}",
-                extra={"session_id": session.session_id, "agent": agent},
+                extra={"session_id": session.session_id, "agent": session.agent, "model": session.model},
             )
             return session
 

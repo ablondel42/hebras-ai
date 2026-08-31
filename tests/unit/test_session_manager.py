@@ -24,6 +24,12 @@ class TestSessionManager:
         session = await manager.create_session(agent="default", workspace="/tmp/test")
         assert session.workspace == "/tmp/test"
 
+    async def test_create_session_with_model(self, manager):
+        """Verify session creation with custom model."""
+        session = await manager.create_session(agent="coder", model="Claude 3.7 Sonnet")
+        assert session.agent == "coder"
+        assert session.model == "Claude 3.7 Sonnet"
+
     async def test_pool_full(self, manager):
         """Verify SessionPoolFull is raised when pool is at capacity."""
         await manager.create_session(agent="default")

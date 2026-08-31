@@ -14,14 +14,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgySession:
-    """Represents a conversation session with an agy agent.
+    """Represents a conversation session with an agy agent and underlying model.
 
-    Each session tracks the agy conversation_id, agent name, workspace,
-    and lifecycle metadata (creation time, last active time, turn count).
+    Each session tracks the agy conversation_id, agent persona, LLM model,
+    workspace, and lifecycle metadata (creation time, last active time, turn count).
     """
 
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     agent: str = "default"
+    model: str = "Gemini 3.6 Flash (High)"
     conversation_id: str | None = None  # agy's conversation UUID
     workspace: str | None = None
     mode: str = "headless"  # "headless" or "interactive"
@@ -57,6 +58,11 @@ class AgySession:
         return (time.monotonic() - self.last_active) > idle_timeout
 
     @property
-    def model_id(self) -> str:
-        """OpenAI-compatible model ID for this session."""
+    def agent_id(self) -> str:
+        """Agent persona ID for this session."""
         return self.agent
+
+    @property
+    def model_id(self) -> str:
+        """Underlying LLM model ID for this session."""
+        return self.model

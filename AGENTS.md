@@ -8,14 +8,15 @@ Welcome to **hebras-ai**. This document provides essential architectural context
 
 `hebras-ai` is an **OpenAI-compatible REST API backend** built on top of [FastAPI](https://fastapi.tiangolo.com/) that acts as an adapter layer over Google Antigravity (`agy` CLI binary).
 
-### Key Purposes:
-- **Standardized Interface**: Exposes OpenAI-compatible endpoints (`/v1/chat/completions` and `/v1/models`) so external clients, LLM orchestration frameworks (e.g. LlamaIndex, LangChain, OpenAI Python SDK), and web frontends can seamlessly interface with local `agy` agents.
-- **Direct 1:1 Natural Agent Naming**: Models are exposed directly by their natural agent names (e.g. `default`, `code_reviewer`, `planner`). Interactive or non-streaming/streaming execution modes are runtime behaviors, not model name prefixes.
+### Key Purposes & Separation of Concerns:
+- **Clean Separation of "Agents" vs "Models"**:
+  - **Agents** (`GET /v1/agents`): Persona, workflow instructions, and tool configurations discovered from `.agents/agents/<name>/<name>.md` or built-in (`default`). Passed to agy via `--agent <agent>`.
+  - **Models** (`GET /v1/models`): Foundational LLM engines (e.g. `Gemini 3.6 Flash (High)`, `Gemini 3.5 Pro`, `Claude 3.7 Sonnet`, `GPT-4o`). Passed to agy via `--model <model>`.
+- **OpenAI-Compatible Chat Completions**: Endpoint `/v1/chat/completions` accepting `messages`, `model` (LLM model), `agent` (agent persona), `stream`, `response_format` (JSON Schema), and `interactive`.
 - **Three Execution Modes**:
   1. **Non-Streaming**: Direct CLI execution with `--output-format json`.
   2. **Streaming (SSE)**: Real-time chunked streaming via `--output-format stream-json` yielding Server-Sent Events (SSE).
   3. **Interactive (PTY)**: Persistent background pseudoterminal process managed via `pexpect`, delivering prompts via carriage return (`\r`) and synchronizing responses deterministically from structured transcript logs (`transcript_full.jsonl`).
-- **Dynamic Agent Discovery**: Automatically scans `.agents/agents/` to expose local agent profiles as OpenAI models directly by their directory name.
 - **Session & Concurrency Management**: In-memory session tracking with turn counts, idle timeouts, background cleanup, and concurrency locks.
 
 ---
@@ -47,15 +48,18 @@ flowchart TD
     SyncHandler -->|ChatCompletionResponse JSON| Client
 
     FastAPI -->|HTTP GET /v1/models| ModelsRouter["Models Router (backend/routes/models.py)"]
-    ModelsRouter -->|Scan .agents/agents/*/| AgentConfigs[".agents/agents/ (.md files)"]
+    ModelsRouter -->|List supported LLMs| SupportedModels["settings.agy_available_models"]
+
+    FastAPI -->|HTTP GET /v1/agents| AgentsRouter["Agents Router (backend/routes/agents.py)"]
+    AgentsRouter -->|Scan .agents/agents/*/| AgentConfigs[".agents/agents/ (.md files)"]
 ```
 
 ### Execution Modes Detailed
 
 | Mode | Trigger Condition | Execution Mechanism | Response Source |
 | :--- | :--- | :--- | :--- |
-| **Non-Streaming** | `stream=false, interactive=false` | Executes `safe_run_command()` with `agy --print <prompt> --agent <agent> --output-format json` | Parsed JSON stdout (`{"response": "...", "usage": ...}`) |
-| **Streaming** | `stream=true, interactive=false` | Executes `stream_agy()` with `agy --output-format stream-json` | Real-time SSE chunks from `step_update.text_delta` |
+| **Non-Streaming** | `stream=false, interactive=false` | Executes `safe_run_command()` with `agy --print <prompt> --agent <agent> --model <model> --output-format json` | Parsed JSON stdout (`{"response": "...", "usage": ...}`) |
+| **Streaming** | `stream=true, interactive=false` | Executes `stream_agy()` with `agy --agent <agent> --model <model> --output-format stream-json` | Real-time SSE chunks from `step_update.text_delta` |
 | **Interactive** | `interactive=true` | Spawns long-lived `pexpect` PTY process with `TERM=dumb`, sends `\r` to submit prompt | Deterministic polling on `~/.gemini/antigravity-cli/brain/<conversation_id>/.system_generated/logs/transcript_full.jsonl` |
 
 ---
@@ -75,7 +79,7 @@ hebras-ai/
 │   ├── main.py                    # App factory (`create_app`), lifespan, CORS, entry point
 │   ├── config.py                  # Settings (BaseSettings) reading dev.env / HEBRAS_* env vars
 │   ├── types.py                   # Pydantic models for OpenAI request/response/streaming formats
-│   ├── session.py                 # AgySession dataclass (turn count, timestamps, model IDs)
+│   ├── session.py                 # AgySession dataclass (turn count, timestamps, agent & model IDs)
 │   ├── session_manager.py         # SessionManager pool: concurrency lock, max limit, auto-expiry
 │   ├── safe_runner.py             # Process isolation, timeouts, and stdin protection (DEVNULL)
 │   ├── agy_process.py             # Subprocess execution: `run_agy` (JSON) and `stream_agy` (NDJSON)
@@ -85,7 +89,8 @@ hebras-ai/
 │   └── routes/                    # API Route Definitions
 │       ├── __init__.py
 │       ├── chat.py                # POST /v1/chat/completions endpoint
-│       └── models.py              # GET /v1/models dynamic agent discovery & GET / root
+│       ├── models.py              # GET /v1/models LLM models list & GET / root
+│       └── agents.py              # GET /v1/agents dynamic agent persona discovery
 │
 ├── integrations/                  # Framework Integrations
 │   ├── __init__.py
@@ -104,8 +109,9 @@ hebras-ai/
     ├── conftest.py                # Async HTTP client and SessionManager fixtures
     ├── integration/
     │   ├── __init__.py
+    │   ├── test_agents_endpoint.py# Tests for /v1/agents agent persona discovery
     │   ├── test_chat_endpoint.py  # Tests for /v1/chat/completions (sync, stream, multi-turn)
-    │   └── test_models_endpoint.py# Tests for /v1/models agent discovery
+    │   └── test_models_endpoint.py# Tests for /v1/models LLM models list
     └── unit/
         ├── __init__.py
         ├── test_agy_interactive.py# Unit tests for InteractiveSession & transcript sync
@@ -122,26 +128,24 @@ hebras-ai/
 
 ---
 
-## 4. Agent Discovery & Model Naming
+## 4. Agents vs Models Specification
 
+### Agent Discovery (`GET /v1/agents`)
 Agents are defined as Markdown files within `.agents/agents/<agent_name>/<agent_name>.md`.
-
-### Agent Configuration Format
 ```markdown
 ---
-name: my_agent
-description: Brief description of the agent
+name: code_reviewer
+description: Expert code reviewer
 tools:
   - read_file(*)
 commandExecutionPolicy: off
 ---
-You are my custom agent prompt instructions...
+System instructions...
 ```
+`GET /v1/agents` returns a list of `AgentInfo` objects containing `id`, `name`, `description`, `tools`, and `command_execution_policy`.
 
-### Model Naming Rules:
-- **Direct 1:1 Agent Names**: Model IDs match the agent's natural name (e.g. `default`, `code_reviewer`, `planner`).
-- **Interactive Mode**: Triggered by `"interactive": true` in the JSON request body, preserving the same model ID.
-- When `GET /v1/models` is called, it returns a list of all detected agents as `ModelInfo` objects with IDs matching `<agent_name>`, or the configured default agent (`default`) if no custom agents exist.
+### Model Listing (`GET /v1/models`)
+`GET /v1/models` returns a list of `ModelInfo` objects for available foundational LLMs (e.g. `Gemini 3.6 Flash (High)`, `Gemini 3.5 Pro`, `Claude 3.7 Sonnet`, `GPT-4o`).
 
 ---
 
@@ -154,8 +158,8 @@ Settings are managed in `backend/config.py` using `pydantic-settings`. They can 
 | `HEBRAS_HOST` | `str` | `"127.0.0.1"` | Host to bind the API server |
 | `HEBRAS_PORT` | `int` | `8000` | Port to bind the API server |
 | `HEBRAS_AGY_BINARY` | `str` | `"agy"` | Path or name of the agy CLI binary |
-| `HEBRAS_AGY_DEFAULT_AGENT` | `str` | `"default"` | Default agent if unspecified |
-| `HEBRAS_AGY_DEFAULT_MODEL` | `str` | `"Gemini 3.6 Flash (High)"` | Default underlying model passed to agy |
+| `HEBRAS_AGY_DEFAULT_AGENT` | `str` | `"default"` | Default agent persona if unspecified |
+| `HEBRAS_AGY_DEFAULT_MODEL` | `str` | `"Gemini 3.6 Flash (High)"` | Default underlying foundational LLM model |
 | `HEBRAS_AGY_DEFAULT_TIMEOUT` | `int` | `120` | Execution timeout (seconds) for non-streaming commands |
 | `HEBRAS_AGY_DEFAULT_WORKSPACE` | `str` | `"."` | Default workspace directory passed via `--add-dir` |
 | `HEBRAS_AGY_AGENTS_DIR` | `str` | `".agents/agents"` | Directory scanned for custom agent configs |
@@ -175,7 +179,6 @@ Settings are managed in `backend/config.py` using `pydantic-settings`. They can 
 ### 1. Environment Setup
 The project uses Python 3.12+ and `uv` / standard virtual environments:
 ```bash
-# Activate existing virtual environment
 source .venv/bin/activate
 ```
 
@@ -191,69 +194,20 @@ python -m backend.main
 ### 3. Running Automated Tests
 ```bash
 # Run entire test suite
-pytest
-
-# Run unit tests only
-pytest tests/unit
-
-# Run integration tests only
-pytest tests/integration
-
-# Run with verbose output
 pytest -v
 ```
 
-### 4. Code Quality & Linting
+### 4. Interactive Test CLI
 ```bash
-# Lint with ruff
-ruff check .
-
-# Format code with ruff
-ruff format .
-```
-
-### 5. Interactive Test CLI
-An interactive terminal CLI is available for manually testing endpoints:
-```bash
-# Ensure server is running on port 8000/8080 first
 python scripts/test_cli.py
 ```
 
 Commands available in `test_cli.py`:
-- `agents`: List discovered agents (`GET /v1/models`).
-- `agent <name>`: Switch active agent.
+- `agents`: List discovered agent personas (`GET /v1/agents`).
+- `agent <name>`: Switch active agent persona.
+- `models`: List available foundational LLM models (`GET /v1/models`).
+- `model <name>`: Switch active LLM model.
 - `chat <prompt>`: Send non-streaming chat completion.
 - `stream <prompt>`: Send streaming chat completion via SSE.
 - `schema <prompt>`: Send completion with JSON Schema enforcement.
 - `multi`: Start an interactive multi-turn conversation.
-
-### 6. LlamaIndex Integration Example
-```bash
-python integrations/hebras_llm.py
-```
-
----
-
-## 7. Guidelines & Rules for AI Agents
-
-When implementing changes or adding features to this codebase, you MUST adhere to the following rules:
-
-### Rule 1: Include Error Handling, Logging, and Tests
-- **Error Handling**: Raise explicit, domain-specific exceptions (e.g. `AgyProcessError`, `InteractiveSessionError`, `SessionNotFound`, `SessionPoolFull`). Never silently suppress errors.
-- **Logging**: Use standard `logging.getLogger(__name__)`. Provide contextual information using the `extra={...}` dictionary (e.g. `extra={"session_id": ..., "agent": ..., "duration_ms": ...}`).
-- **Tests**: Every new feature, endpoint change, or utility function MUST be accompanied by corresponding unit or integration tests under `tests/unit/` or `tests/integration/`. Always verify that all tests pass (`pytest`) before concluding your task.
-
-### Rule 2: Non-Interactive Subprocess Safety
-- Subprocesses must never block indefinitely waiting for user input. Always use `safe_run_command()` with `DEVNULL` stdin protection or ensure `pexpect` drain loops are in place.
-- Enforce explicit execution timeouts on all subprocesses.
-
-### Rule 3: Async & Concurrency Safety
-- `SessionManager` state is protected by `asyncio.Lock()`. Ensure all operations modifying session dictionaries or interacting with shared state acquire the lock.
-- Never perform blocking synchronous I/O operations directly inside async route handlers.
-
-### Rule 4: Pydantic v2 Compatibility
-- All data models in `backend/types.py` use Pydantic v2. Use `model_dump_json()`, `model_dump()`, and `model_config = {"populate_by_name": True}`.
-
-### Rule 5: Keep Documentation Synchronized
-- If you add new configuration variables, update `backend/config.py` and document them in `AGENTS.md`.
-- If you add new agents or routes, update the architecture section and file maps accordingly.

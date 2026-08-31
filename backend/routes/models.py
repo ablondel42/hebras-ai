@@ -1,6 +1,6 @@
-"""GET /v1/models — Discover available agents as OpenAI-compatible models."""
+"""GET /v1/models — OpenAI-compatible foundational LLM models listing."""
 import logging
-from pathlib import Path
+from collections.abc import Sequence
 
 from fastapi import APIRouter
 
@@ -11,61 +11,38 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _discover_agents() -> list[ModelInfo]:
-    """Scan .agents/agents/ directory for available agent configs.
+def get_available_models(model_names: Sequence[str] | None = None) -> list[ModelInfo]:
+    """Return available LLM foundational models supported by Antigravity CLI backend.
 
-    Each subdirectory containing a .md file becomes a model.
-    Model IDs match the agent directory name directly.
+    Args:
+        model_names: Optional sequence of model names to wrap into ModelInfo objects.
 
     Returns:
-        List of ModelInfo objects for discovered agents.
+        List of ModelInfo objects for supported foundational models.
     """
-    agents_dir = Path(settings.agy_agents_dir)
-    models: list[ModelInfo] = []
-
-    try:
-        if not agents_dir.exists():
-            logger.warning("Agents directory not found: %s", agents_dir)
-            return models
-
-        for agent_dir in sorted(agents_dir.iterdir()):
-            if agent_dir.is_dir():
-                # Check for a .md config file
-                md_files = list(agent_dir.glob("*.md"))
-                if md_files:
-                    agent_name = agent_dir.name
-                    models.append(
-                        ModelInfo(
-                            id=agent_name,
-                            created=int(agent_dir.stat().st_mtime),
-                            owned_by="hebras-ai",
-                        )
-                    )
-    except OSError as e:
-        logger.error("Error discovering agents in %s: %s", agents_dir, e)
-
+    names = model_names if model_names is not None else settings.agy_available_models
+    models = [
+        ModelInfo(
+            id=name,
+            owned_by="google",
+        )
+        for name in names
+    ]
+    if not models:
+        models = [
+            ModelInfo(
+                id=settings.agy_default_model,
+                owned_by="google",
+            )
+        ]
     return models
 
 
 @router.get("/models")
 async def list_models() -> ModelListResponse:
-    """List available models (discovered from .agents/agents/).
+    """List available LLM models supported by the backend.
 
-    Scans the agents directory and returns each configured agent
-    as an OpenAI-compatible model entry.
+    Returns standard OpenAI-compatible ModelInfo entries for foundational models.
     """
-    try:
-        models = _discover_agents()
-    except Exception as e:
-        logger.error("Failed to list models: %s", e)
-        models = []
-
-    if not models:
-        logger.warning("No agents discovered, returning default model")
-        models = [
-            ModelInfo(
-                id=settings.agy_default_agent,
-                owned_by="hebras-ai",
-            )
-        ]
+    models = get_available_models()
     return ModelListResponse(data=models)

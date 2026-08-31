@@ -11,6 +11,7 @@ class TestHebrasLLMExtended:
         llm = HebrasLLM(agent="default", interactive=True)
         payload = llm._build_payload("Hello")
         assert payload["model"] == "default"
+        assert payload["agent"] == "default"
         assert payload["messages"] == [{"role": "user", "content": "Hello"}]
         assert payload["interactive"] is True
         assert payload["dangerously_skip_permissions"] is False
@@ -20,6 +21,7 @@ class TestHebrasLLMExtended:
         llm = HebrasLLM(agent="code_writer", mode="plan", dangerously_skip_permissions=True)
         payload = llm._build_payload("Draft code")
         assert payload["model"] == "code_writer"
+        assert payload["agent"] == "code_writer"
         assert payload["mode"] == "plan"
         assert payload["dangerously_skip_permissions"] is True
 

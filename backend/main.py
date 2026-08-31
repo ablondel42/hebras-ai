@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
 from backend.logging_config import setup_logging
+from backend.routes.agents import router as agents_router
 from backend.routes.chat import router as chat_router
 from backend.routes.models import router as models_router
 from backend.session_manager import SessionManager
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     # Register API routers under /v1
     app.include_router(chat_router, prefix="/v1")
     app.include_router(models_router, prefix="/v1")
+    app.include_router(agents_router, prefix="/v1")
 
     # Root endpoint for health check and version
     @app.get("/")
