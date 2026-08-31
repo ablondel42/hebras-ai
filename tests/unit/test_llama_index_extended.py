@@ -7,9 +7,9 @@ from llama_index.core.llms import CompletionResponse
 
 class TestHebrasLLMExtended:
     def test_build_payload_defaults(self):
-        llm = HebrasLLM(agent="read", interactive=True)
+        llm = HebrasLLM(agent="default", interactive=True)
         payload = llm._build_payload("Hello")
-        assert payload["model"] == "hebras-interactive-read"
+        assert payload["model"] == "default"
         assert payload["messages"] == [{"role": "user", "content": "Hello"}]
         assert payload["interactive"] is True
         assert payload["dangerously_skip_permissions"] is False
@@ -18,6 +18,7 @@ class TestHebrasLLMExtended:
     def test_build_payload_with_mode_and_permissions(self):
         llm = HebrasLLM(agent="code_writer", mode="plan", dangerously_skip_permissions=True)
         payload = llm._build_payload("Draft code")
+        assert payload["model"] == "code_writer"
         assert payload["mode"] == "plan"
         assert payload["dangerously_skip_permissions"] is True
 

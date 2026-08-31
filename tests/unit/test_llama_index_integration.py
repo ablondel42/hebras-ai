@@ -8,16 +8,16 @@ from llama_index.core.llms import LLMMetadata
 class TestHebrasLLM:
     def test_metadata(self):
         from llama_index.core.llms.function_calling import FunctionCallingLLM
-        llm = HebrasLLM(agent="read", interactive=True)
+        llm = HebrasLLM(agent="default", interactive=True)
         assert isinstance(llm, FunctionCallingLLM)
         meta = llm.metadata
         assert isinstance(meta, LLMMetadata)
-        assert meta.model_name == "hebras-interactive-read"
+        assert meta.model_name == "default"
         assert meta.is_chat_model is True
         assert meta.is_function_calling_model is True
 
     def test_complete_sync(self):
-        llm = HebrasLLM(agent="read", api_base="http://testserver/v1")
+        llm = HebrasLLM(agent="default", api_base="http://testserver/v1")
 
         mock_resp = MagicMock()
         mock_resp.json.return_value = {

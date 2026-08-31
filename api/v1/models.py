@@ -15,7 +15,7 @@ def _discover_agents() -> list[ModelInfo]:
     """Scan .agents/agents/ directory for available agent configs.
 
     Each subdirectory containing a .md file becomes a model.
-    Model IDs are prefixed with 'hebras-'.
+    Model IDs match the agent directory name directly.
 
     Returns:
         List of ModelInfo objects for discovered agents.
@@ -36,7 +36,7 @@ def _discover_agents() -> list[ModelInfo]:
                     agent_name = agent_dir.name
                     models.append(
                         ModelInfo(
-                            id=f"hebras-{agent_name}",
+                            id=agent_name,
                             created=int(agent_dir.stat().st_mtime),
                             owned_by="hebras-ai",
                         )
@@ -64,7 +64,7 @@ async def list_models() -> ModelListResponse:
         logger.warning("No agents discovered, returning default model")
         models = [
             ModelInfo(
-                id=f"hebras-{settings.agy_default_agent}",
+                id=settings.agy_default_agent,
                 owned_by="hebras-ai",
             )
         ]

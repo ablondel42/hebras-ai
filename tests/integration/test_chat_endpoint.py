@@ -24,7 +24,7 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "hebras-read",
+                    "model": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                     "stream": False,
                 },
@@ -33,7 +33,7 @@ class TestChatCompletionsNonStreaming:
         assert resp.status_code == 200
         data = resp.json()
         assert data["object"] == "chat.completion"
-        assert data["model"] == "hebras-read"
+        assert data["model"] == "default"
         assert data["choices"][0]["message"]["content"] == "Hello! How can I help?"
         assert data["choices"][0]["message"]["role"] == "assistant"
         assert data["choices"][0]["finish_reason"] == "stop"
@@ -53,7 +53,7 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "hebras-read",
+                    "model": "default",
                     "messages": [
                         {"role": "system", "content": "You are helpful."},
                         {"role": "user", "content": "Hi"},
@@ -73,7 +73,7 @@ class TestChatCompletionsNonStreaming:
         resp = await client.post(
             "/v1/chat/completions",
             json={
-                "model": "hebras-read",
+                "model": "default",
                 "messages": [{"role": "system", "content": "Be helpful"}],
             },
         )
@@ -91,7 +91,7 @@ class TestChatCompletionsNonStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "hebras-read",
+                    "model": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                 },
             )
@@ -109,16 +109,16 @@ class TestChatCompletionsNonStreaming:
             await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "hebras-test",
+                    "model": "custom-agent",
                     "messages": [{"role": "user", "content": "Hi"}],
                 },
             )
 
         call_args = mock.call_args
-        assert call_args.kwargs["agent"] == "test"
+        assert call_args.kwargs["agent"] == "custom-agent"
 
-    async def test_missing_model_defaults_to_hebras_read(self, client):
-        """Test that requests omitting the 'model' field default to 'hebras-read' instead of failing with 422."""
+    async def test_missing_model_defaults_to_default_agent(self, client):
+        """Test that requests omitting the 'model' field default to settings.agy_default_agent."""
         mock_result = {
             "conversation_id": "test-conv-raw",
             "response": "raw ok",
@@ -134,8 +134,8 @@ class TestChatCompletionsNonStreaming:
             )
 
         assert resp.status_code == 200
-        assert resp.json()["model"] == "hebras-read"
-        assert mock.call_args.kwargs["agent"] == "read"
+        assert resp.json()["model"] == "default"
+        assert mock.call_args.kwargs["agent"] == "default"
 
 
 class TestChatCompletionsStreaming:
@@ -153,7 +153,7 @@ class TestChatCompletionsStreaming:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "hebras-read",
+                    "model": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                     "stream": True,
                 },

@@ -11,14 +11,14 @@ class TestBuildCommand:
         """Verify basic command structure."""
         cmd = _build_command(
             prompt="Hello",
-            agent="read",
+            agent="default",
             output_format="json",
         )
         assert cmd[0] == "agy"  # binary name from settings
         assert "--print" in cmd
         assert "Hello" in cmd
         assert "--agent" in cmd
-        assert "read" in cmd
+        assert "default" in cmd
         assert "--output-format" in cmd
         assert "json" in cmd
         assert "--add-dir" in cmd
@@ -28,7 +28,7 @@ class TestBuildCommand:
         schema = {"type": "object", "properties": {"name": {"type": "string"}}}
         cmd = _build_command(
             prompt="Extract",
-            agent="read",
+            agent="default",
             json_schema=schema,
         )
         assert "--json-schema" in cmd
@@ -41,7 +41,7 @@ class TestBuildCommand:
         """Verify --conversation flag is added when conversation_id is provided."""
         cmd = _build_command(
             prompt="Continue",
-            agent="read",
+            agent="default",
             conversation_id="abc-123",
         )
         assert "--conversation" in cmd
@@ -52,7 +52,7 @@ class TestBuildCommand:
         """Verify optional flags are omitted when not provided."""
         cmd = _build_command(
             prompt="Hello",
-            agent="read",
+            agent="default",
         )
         assert "--json-schema" not in cmd
         assert "--conversation" not in cmd
@@ -70,6 +70,6 @@ class TestBuildCommand:
         """Verify --dangerously-skip-permissions is NEVER included."""
         cmd = _build_command(
             prompt="Hello",
-            agent="read",
+            agent="default",
         )
         assert "--dangerously-skip-permissions" not in cmd

@@ -23,7 +23,7 @@ class TestChatCompletionRequest:
     def test_basic_request(self):
         """Verify a basic OpenAI request format parses correctly."""
         data = {
-            "model": "hebras-read",
+            "model": "default",
             "messages": [
                 {"role": "system", "content": "You are helpful."},
                 {"role": "user", "content": "Hello"},
@@ -31,7 +31,7 @@ class TestChatCompletionRequest:
             "stream": False,
         }
         req = ChatCompletionRequest(**data)
-        assert req.model == "hebras-read"
+        assert req.model == "default"
         assert len(req.messages) == 2
         assert req.messages[0].role == "system"
         assert req.messages[1].content == "Hello"
@@ -40,7 +40,7 @@ class TestChatCompletionRequest:
     def test_streaming_request(self):
         """Verify stream=True parses correctly."""
         data = {
-            "model": "hebras-test",
+            "model": "custom-agent",
             "messages": [{"role": "user", "content": "Hi"}],
             "stream": True,
         }
@@ -50,7 +50,7 @@ class TestChatCompletionRequest:
     def test_request_with_response_format(self):
         """Verify response_format with json_schema parses correctly."""
         data = {
-            "model": "hebras-read",
+            "model": "default",
             "messages": [{"role": "user", "content": "Extract data"}],
             "response_format": {
                 "type": "json_schema",
@@ -74,7 +74,7 @@ class TestChatCompletionRequest:
     def test_request_defaults(self):
         """Verify default values are set correctly."""
         data = {
-            "model": "hebras-read",
+            "model": "default",
             "messages": [{"role": "user", "content": "Hi"}],
         }
         req = ChatCompletionRequest(**data)
@@ -89,7 +89,7 @@ class TestChatCompletionRequest:
     def test_request_with_hebras_extensions(self):
         """Verify hebras-specific extension fields parse correctly."""
         data = {
-            "model": "hebras-read",
+            "model": "default",
             "messages": [{"role": "user", "content": "Hi"}],
             "workspace": "/tmp/my-project",
             "conversation_id": "abc-123",
@@ -105,7 +105,7 @@ class TestChatCompletionResponse:
     def test_response_serialization(self):
         """Verify response matches OpenAI format."""
         resp = ChatCompletionResponse(
-            model="hebras-read",
+            model="default",
             choices=[Choice(message=ChatCompletionMessage(content="Hello!"))],
             usage=UsageInfo(prompt_tokens=5, completion_tokens=2, total_tokens=7),
         )
@@ -122,7 +122,7 @@ class TestChatCompletionResponse:
     def test_response_has_created_timestamp(self):
         """Verify created timestamp is auto-generated."""
         resp = ChatCompletionResponse(
-            model="hebras-read",
+            model="default",
             choices=[Choice(message=ChatCompletionMessage(content="Hi"))],
             usage=UsageInfo(),
         )
@@ -137,7 +137,7 @@ class TestStreamingChunk:
         chunk = ChatCompletionChunk(
             id="chatcmpl-test123",
             created=1700000000,
-            model="hebras-read",
+            model="default",
             choices=[StreamChoice(delta=DeltaContent(content="Hello"))],
         )
         data = chunk.model_dump()
@@ -150,7 +150,7 @@ class TestStreamingChunk:
         chunk = ChatCompletionChunk(
             id="chatcmpl-test123",
             created=1700000000,
-            model="hebras-read",
+            model="default",
             choices=[StreamChoice(
                 delta=DeltaContent(),
                 finish_reason="stop",
@@ -167,17 +167,17 @@ class TestModelTypes:
 
     def test_model_info(self):
         """Verify ModelInfo serialization."""
-        model = ModelInfo(id="hebras-read", created=1700000000)
+        model = ModelInfo(id="default", created=1700000000)
         data = model.model_dump()
-        assert data["id"] == "hebras-read"
+        assert data["id"] == "default"
         assert data["object"] == "model"
         assert data["owned_by"] == "hebras-ai"
 
     def test_model_list_response(self):
         """Verify ModelListResponse format."""
         resp = ModelListResponse(data=[
-            ModelInfo(id="hebras-read"),
-            ModelInfo(id="hebras-test"),
+            ModelInfo(id="default"),
+            ModelInfo(id="custom-agent"),
         ])
         data = resp.model_dump()
         assert data["object"] == "list"

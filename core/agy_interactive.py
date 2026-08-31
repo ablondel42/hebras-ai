@@ -87,6 +87,8 @@ class InteractiveSession:
         if self.child is not None and self.child.isalive():
             try:
                 self.child.read_nonblocking(65536, timeout=0.01)
+                if self._dump_file and not self._dump_file.closed:
+                    self._dump_file.flush()
             except (pexpect.TIMEOUT, pexpect.EOF):
                 pass
             except Exception as e:
@@ -196,7 +198,24 @@ class InteractiveSession:
                 if dirs_after:
                     assigned_id = Path(sorted(dirs_after)[-1]).name
                     logger.info(f"Discovered active agy session conversation_id: {assigned_id}")
-                    self.conversation_id = assigned_id
+                    if assigned_id != self.conversation_id:
+                        old_dump_path = self.pty_dump_file_path
+                        if self._dump_file and not self._dump_file.closed:
+                            self._dump_file.flush()
+                            self._dump_file.close()
+                        self.conversation_id = assigned_id
+                        new_dump_path = self.pty_dump_file_path
+                        if old_dump_path.exists() and not new_dump_path.exists():
+                            try:
+                                old_dump_path.rename(new_dump_path)
+                            except Exception as e:
+                                logger.debug(f"Error renaming dump file: {e}")
+                        try:
+                            self._dump_file = open(new_dump_path, "a", encoding="utf-8", buffering=1)
+                            if self.child is not None:
+                                self.child.logfile = self._dump_file
+                        except Exception as e:
+                            logger.warning(f"Error reopening PTY dump file for {assigned_id}: {e}")
                     break
                 await asyncio.sleep(0.3)
 
@@ -275,8 +294,9 @@ class InteractiveSession:
                 self._started = False
                 if self._dump_file:
                     try:
+                        if not self._dump_file.closed:
+                            self._dump_file.flush()
                         self._dump_file.close()
                     except Exception as e:
                         logger.debug(f"Error closing PTY dump file: {e}")
-                    self._dump_file = None
                     self._dump_file = None

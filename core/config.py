@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # AGY CLI
     agy_binary: str = "agy"
-    agy_default_agent: str = "read"
+    agy_default_agent: str = "default"
     agy_default_model: str = "Gemini 3.6 Flash (High)"
     agy_default_timeout: int = 120
     agy_default_workspace: str = "."

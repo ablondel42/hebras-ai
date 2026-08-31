@@ -38,7 +38,7 @@ class ResponseFormat(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """OpenAI-compatible chat completion request."""
-    model: str = "hebras-read"
+    model: str = "default"
     messages: list[ChatMessage]
     temperature: float | None = None
     top_p: float | None = None

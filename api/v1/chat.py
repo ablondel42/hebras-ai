@@ -69,16 +69,20 @@ def _extract_agent(model: str) -> str:
     """Extract agent name from model ID.
 
     Args:
-        model: Model ID string (e.g., 'hebras-read' or 'hebras-interactive-read').
+        model: Model ID string (e.g., 'default', 'code-reviewer').
 
     Returns:
-        Agent name (e.g., 'read').
+        Agent name.
     """
+    if not model or not model.strip():
+        return settings.agy_default_agent
     if model.startswith("hebras-interactive-"):
         return model[len("hebras-interactive-"):]
     elif model.startswith("hebras-"):
         return model[len("hebras-"):]
-    return settings.agy_default_agent
+    elif model.startswith("interactive-"):
+        return model[len("interactive-"):]
+    return model
 
 
 def _extract_json_schema(request: ChatCompletionRequest) -> dict[str, Any] | None:
@@ -105,7 +109,7 @@ async def chat_completions(
     """OpenAI-compatible chat completions endpoint.
 
     Supports streaming (SSE), non-streaming, and persistent interactive (PTY) modes.
-    Maps the model field to agy agent names (e.g., 'hebras-read' -> 'read').
+    Maps the model field to agy agent names directly.
     """
     agent = _extract_agent(request.model)
     prompt, _ = _extract_prompt_and_system(request)
@@ -135,7 +139,11 @@ async def chat_completions(
 
     session.touch()
 
-    is_interactive = request.interactive or request.model.startswith("hebras-interactive-")
+    is_interactive = (
+        request.interactive
+        or request.model.startswith("interactive-")
+        or request.model.startswith("hebras-interactive-")
+    )
 
     logger.info(
         f"Processing chat completion request: prompt_length={len(prompt)} "
@@ -195,7 +203,7 @@ async def _handle_non_streaming(
     )
 
     return ChatCompletionResponse(
-        model=f"hebras-{agent}",
+        model=agent,
         choices=[
             Choice(
                 message=ChatCompletionMessage(content=response_text),
@@ -217,7 +225,7 @@ async def _handle_streaming(
     """Handle streaming chat completion via SSE."""
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     created = int(time.time())
-    model = f"hebras-{agent}"
+    model = agent
 
     async def event_generator():
         collected_text_parts: list[str] = []
@@ -380,7 +388,7 @@ async def _handle_interactive(
     )
 
     return ChatCompletionResponse(
-        model=f"hebras-{agent}",
+        model=agent,
         choices=[
             Choice(
                 message=ChatCompletionMessage(content=response_text),

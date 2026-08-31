@@ -13,8 +13,8 @@ import readline  # enables arrow keys and history in input()
 
 # ── Configuration ────────────────────────────────────────────────
 
-BASE_URL = "http://localhost:8000"
-DEFAULT_AGENT = "read"
+BASE_URL = "http://localhost:8080"
+DEFAULT_AGENT = "default"
 
 # ── Colors ───────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ def print_help():
 {BOLD}Available commands:{RESET}
 
   {GREEN}agents{RESET}                  List available agents
-  {GREEN}agent{RESET}  {DIM}<name>{RESET}          Switch active agent (e.g. read, brainstorm, code_writer)
+  {GREEN}agent{RESET}  {DIM}<name>{RESET}          Switch active agent (e.g. default, coder)
   {GREEN}chat{RESET}   {DIM}<message>{RESET}        Send a non-streaming chat message
   {GREEN}stream{RESET} {DIM}<message>{RESET}        Send a streaming chat message (SSE)
   {GREEN}schema{RESET} {DIM}<message>{RESET}        Send with JSON schema enforcement
@@ -75,8 +75,7 @@ def pretty_json(data):
 
 def print_response_meta(data):
     """Print response metadata (agent, usage, id)."""
-    model_str = data.get("model", "?")
-    agent = model_str.replace("hebras-", "")
+    agent = data.get("model", "?")
     usage = data.get("usage", {})
     comp_id = data.get("id", "?")
     prompt_t = usage.get("prompt_tokens", 0)
@@ -96,7 +95,7 @@ def cmd_agents():
         models = data.get("data", [])
         print(f"\n{BOLD}Available Agents:{RESET}")
         for m in models:
-            agent_name = m['id'].replace("hebras-", "")
+            agent_name = m['id']
             print(f"  {GREEN}•{RESET} {BOLD}{agent_name}{RESET}")
         return True
     except Exception as e:
@@ -107,7 +106,7 @@ def cmd_agents():
 def cmd_chat(message: str, agent: str, system_prompt: str | None = None, stream: bool = False,
              json_schema: dict | None = None, conversation_id: str | None = None):
     """POST /v1/chat/completions"""
-    model_id = f"hebras-{agent}" if not agent.startswith("hebras-") else agent
+    model_id = agent
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -316,7 +315,7 @@ def main():
 
         elif cmd in ("agent", "model"):
             if arg:
-                current_agent = arg.replace("hebras-", "")
+                current_agent = arg.strip()
                 print(f"{GREEN}Switched agent to: {BOLD}{current_agent}{RESET}")
             else:
                 print(f"Active agent: {BOLD}{current_agent}{RESET}")

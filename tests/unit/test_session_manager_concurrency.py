@@ -8,7 +8,7 @@ class TestSessionManagerConcurrency:
     @pytest.mark.asyncio
     async def test_get_session_expired_triggers_cleanup(self):
         sm = SessionManager(max_sessions=5, idle_timeout=1)
-        session = await sm.create_session(agent="read")
+        session = await sm.create_session(agent="default")
 
         # Mock interactive session cleanup
         mock_interactive = AsyncMock()
@@ -25,7 +25,7 @@ class TestSessionManagerConcurrency:
     @pytest.mark.asyncio
     async def test_evict_expired_calls_cleanup(self):
         sm = SessionManager(max_sessions=5, idle_timeout=1)
-        session = await sm.create_session(agent="read")
+        session = await sm.create_session(agent="default")
 
         mock_interactive = AsyncMock()
         session.interactive = mock_interactive

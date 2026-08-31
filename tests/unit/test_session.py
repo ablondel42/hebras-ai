@@ -12,15 +12,15 @@ class TestAgySession:
         session = AgySession()
         assert session.session_id is not None
         assert len(session.session_id) == 32  # hex UUID
-        assert session.agent == "read"
+        assert session.agent == "default"
         assert session.conversation_id is None
         assert session.workspace is None
         assert session.turn_count == 0
 
     def test_custom_creation(self):
         """Verify session creates with custom values."""
-        session = AgySession(agent="test", workspace="/tmp/project")
-        assert session.agent == "test"
+        session = AgySession(agent="custom-agent", workspace="/tmp/project")
+        assert session.agent == "custom-agent"
         assert session.workspace == "/tmp/project"
 
     def test_touch_increments_turn(self):
@@ -34,10 +34,10 @@ class TestAgySession:
 
     def test_model_id(self):
         """Verify model_id property."""
-        session = AgySession(agent="read")
-        assert session.model_id == "hebras-read"
-        session2 = AgySession(agent="test")
-        assert session2.model_id == "hebras-test"
+        session = AgySession(agent="default")
+        assert session.model_id == "default"
+        session2 = AgySession(agent="custom-agent")
+        assert session2.model_id == "custom-agent"
 
     def test_expiry_not_expired(self):
         """Verify session is not expired when idle_timeout is large."""

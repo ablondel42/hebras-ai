@@ -20,7 +20,7 @@ class AgySession:
     """
 
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    agent: str = "read"
+    agent: str = "default"
     conversation_id: str | None = None  # agy's conversation UUID
     workspace: str | None = None
     mode: str = "headless"  # "headless" or "interactive"
@@ -58,4 +58,4 @@ class AgySession:
     @property
     def model_id(self) -> str:
         """OpenAI-compatible model ID for this session."""
-        return f"hebras-{self.agent}"
+        return self.agent
