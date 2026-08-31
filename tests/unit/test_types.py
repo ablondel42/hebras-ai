@@ -90,16 +90,29 @@ class TestChatCompletionRequest:
         """Verify hebras-specific extension fields parse correctly."""
         data = {
             "agent": "coder",
-            "model": "Claude 3.7 Sonnet",
+            "model": "Claude Sonnet 4.6",
+            "reflection": "low",
             "messages": [{"role": "user", "content": "Hi"}],
             "workspace": "/tmp/my-project",
             "conversation_id": "abc-123",
         }
         req = ChatCompletionRequest(**data)
         assert req.agent == "coder"
-        assert req.model == "Claude 3.7 Sonnet"
+        assert req.model == "Claude Sonnet 4.6"
+        assert req.reflection == "low"
         assert req.workspace == "/tmp/my-project"
         assert req.conversation_id == "abc-123"
+
+    def test_request_with_reasoning_effort(self):
+        """Verify reasoning_effort parses correctly."""
+        data = {
+            "model": "Gemini 3.7 Flash",
+            "reasoning_effort": "medium",
+            "messages": [{"role": "user", "content": "Hi"}],
+        }
+        req = ChatCompletionRequest(**data)
+        assert req.model == "Gemini 3.7 Flash"
+        assert req.reasoning_effort == "medium"
 
 
 class TestChatCompletionResponse:

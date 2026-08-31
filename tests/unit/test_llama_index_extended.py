@@ -10,17 +10,18 @@ class TestHebrasLLMExtended:
     def test_build_payload_defaults(self):
         llm = HebrasLLM(agent="default", interactive=True)
         payload = llm._build_payload("Hello")
-        assert payload["model"] == "default"
+        assert payload["model"] == "Gemini 3.7 Flash"
         assert payload["agent"] == "default"
+        assert payload["reflection"] == "high"
         assert payload["messages"] == [{"role": "user", "content": "Hello"}]
         assert payload["interactive"] is True
         assert payload["dangerously_skip_permissions"] is False
         assert "mode" not in payload
 
     def test_build_payload_with_mode_and_permissions(self):
-        llm = HebrasLLM(agent="code_writer", mode="plan", dangerously_skip_permissions=True)
+        llm = HebrasLLM(agent="code_writer", model_name="Claude Sonnet 4.6", mode="plan", dangerously_skip_permissions=True)
         payload = llm._build_payload("Draft code")
-        assert payload["model"] == "code_writer"
+        assert payload["model"] == "Claude Sonnet 4.6"
         assert payload["agent"] == "code_writer"
         assert payload["mode"] == "plan"
         assert payload["dangerously_skip_permissions"] is True

@@ -13,7 +13,7 @@ class TestHebrasLLM:
         assert isinstance(llm, FunctionCallingLLM)
         meta = llm.metadata
         assert isinstance(meta, LLMMetadata)
-        assert meta.model_name == "default"
+        assert meta.model_name == "Gemini 3.7 Flash"
         assert meta.is_chat_model is True
         assert meta.is_function_calling_model is True
 

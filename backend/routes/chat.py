@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from backend.agy_interactive import InteractiveSession, InteractiveSessionError
 from backend.agy_process import AgyProcessError, run_agy, stream_agy
 from backend.config import settings
+from backend.routes.models import resolve_agy_model_target
 from backend.session import AgySession
 from backend.session_manager import SessionManager, SessionNotFound, SessionPoolFull
 from backend.types import (
@@ -72,41 +73,28 @@ def _extract_prompt_and_system(request: ChatCompletionRequest) -> tuple[str, str
     return user_prompt, system_message
 
 
-def _resolve_agent_and_model(request: ChatCompletionRequest) -> tuple[str, str]:
-    """Resolve agent persona name and LLM model name from request.
+def _extract_agent_from_request(request: ChatCompletionRequest) -> str:
+    """Extract agent persona name from request.
 
-    Allows specifying 'agent' directly, or passing agent in 'model' for compatibility.
-
-    Returns:
-        Tuple of (agent_name, model_name).
+    If request.agent is not specified but model starts with agent prefix, extracts it.
     """
     agent = request.agent
+    if agent and agent.strip():
+        return agent.strip()
+
     model = request.model
+    if model:
+        raw_name = model.strip()
+        if raw_name.startswith("hebras-interactive-"):
+            return raw_name[len("hebras-interactive-"):]
+        elif raw_name.startswith("hebras-"):
+            return raw_name[len("hebras-"):]
+        elif raw_name.startswith("interactive-"):
+            return raw_name[len("interactive-"):]
+        elif raw_name in ("custom-agent", "coder", "code_reviewer"):
+            return raw_name
 
-    if not agent:
-        if model:
-            # Check for legacy prefix or if model matches known agent profile
-            raw_name = model
-            if raw_name.startswith("hebras-interactive-"):
-                raw_name = raw_name[len("hebras-interactive-"):]
-            elif raw_name.startswith("hebras-"):
-                raw_name = raw_name[len("hebras-"):]
-            elif raw_name.startswith("interactive-"):
-                raw_name = raw_name[len("interactive-"):]
-
-            # If model name is not in known available models list, treat as agent persona
-            if not any(raw_name.lower() == m.lower() for m in settings.agy_available_models):
-                agent = raw_name
-                model = settings.agy_default_model
-            else:
-                agent = settings.agy_default_agent
-        else:
-            agent = settings.agy_default_agent
-
-    if not model:
-        model = settings.agy_default_model
-
-    return agent, model
+    return settings.agy_default_agent
 
 
 def _extract_json_schema(request: ChatCompletionRequest) -> dict[str, Any] | None:
@@ -135,7 +123,15 @@ async def chat_completions(
     Supports streaming (SSE), non-streaming, and persistent interactive (PTY) modes.
     Differentiates between foundational LLM model and Antigravity agent persona.
     """
-    agent, model = _resolve_agent_and_model(request)
+    agent = _extract_agent_from_request(request)
+    raw_model_input = request.model or settings.agy_default_model
+    # If the user passed a known agent name in the model field, reset model to default
+    if raw_model_input == agent and agent != settings.agy_default_agent:
+        raw_model_input = settings.agy_default_model
+
+    reflection = request.reflection or request.reasoning_effort or settings.agy_default_reflection
+    clean_model, agy_target_model = await resolve_agy_model_target(raw_model_input, reflection)
+
     prompt, _ = _extract_prompt_and_system(request)
     json_schema = _extract_json_schema(request)
 
@@ -154,7 +150,7 @@ async def chat_completions(
         try:
             session = await sm.create_session(
                 agent=agent,
-                model=model,
+                model=clean_model,
                 workspace=request.workspace or settings.agy_default_workspace,
             )
             if request.conversation_id:
@@ -173,16 +169,23 @@ async def chat_completions(
 
     logger.info(
         f"Processing chat completion request: prompt_length={len(prompt)} "
-        f"agent='{agent}' model='{model}' conversation_id='{session.conversation_id}' "
+        f"agent='{agent}' model='{clean_model}' target='{agy_target_model}' "
+        f"reflection='{reflection}' conversation_id='{session.conversation_id}' "
         f"stream={request.stream} interactive={is_interactive}"
     )
 
     if is_interactive:
-        return await _handle_interactive(request, session, prompt, agent, model, json_schema)
+        return await _handle_interactive(
+            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+        )
     elif request.stream:
-        return await _handle_streaming(request, session, prompt, agent, model, json_schema)
+        return await _handle_streaming(
+            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+        )
     else:
-        return await _handle_non_streaming(request, session, prompt, agent, model, json_schema)
+        return await _handle_non_streaming(
+            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+        )
 
 
 async def _handle_non_streaming(
@@ -190,7 +193,8 @@ async def _handle_non_streaming(
     session: AgySession,
     prompt: str,
     agent: str,
-    model: str,
+    clean_model: str,
+    agy_target_model: str,
     json_schema: dict | None,
 ) -> ChatCompletionResponse:
     """Handle non-streaming chat completion."""
@@ -201,7 +205,7 @@ async def _handle_non_streaming(
             json_schema=json_schema,
             conversation_id=session.conversation_id,
             workspace=session.workspace,
-            model=model,
+            model=agy_target_model,
         )
     except AgyProcessError as e:
         logger.error(f"agy process error: {e}", extra={"stderr": e.stderr})
@@ -230,7 +234,7 @@ async def _handle_non_streaming(
     )
 
     return ChatCompletionResponse(
-        model=model,
+        model=clean_model,
         agent=agent,
         choices=[
             Choice(
@@ -248,7 +252,8 @@ async def _handle_streaming(
     session: AgySession,
     prompt: str,
     agent: str,
-    model: str,
+    clean_model: str,
+    agy_target_model: str,
     json_schema: dict | None,
 ) -> StreamingResponse:
     """Handle streaming chat completion via SSE."""
@@ -262,7 +267,7 @@ async def _handle_streaming(
         first_chunk = ChatCompletionChunk(
             id=completion_id,
             created=created,
-            model=model,
+            model=clean_model,
             agent=agent,
             choices=[StreamChoice(delta=DeltaContent(role="assistant", content=""))],
             system_fingerprint=session.conversation_id or session.session_id,
@@ -276,7 +281,7 @@ async def _handle_streaming(
                 json_schema=json_schema,
                 conversation_id=session.conversation_id,
                 workspace=session.workspace,
-                model=model,
+                model=agy_target_model,
             ):
                 # agy NDJSON uses "event" (e.g. "init", "step_update", "result"), fallback to "type"
                 event_name = event.get("event") or event.get("type", "")
@@ -299,7 +304,7 @@ async def _handle_streaming(
                         chunk = ChatCompletionChunk(
                             id=completion_id,
                             created=created,
-                            model=model,
+                            model=clean_model,
                             agent=agent,
                             choices=[StreamChoice(delta=DeltaContent(content=content))],
                             system_fingerprint=session.conversation_id or session.session_id,
@@ -318,7 +323,7 @@ async def _handle_streaming(
                     final_chunk = ChatCompletionChunk(
                         id=completion_id,
                         created=created,
-                        model=model,
+                        model=clean_model,
                         agent=agent,
                         choices=[StreamChoice(
                             delta=DeltaContent(),
@@ -337,7 +342,7 @@ async def _handle_streaming(
                         chunk = ChatCompletionChunk(
                             id=completion_id,
                             created=created,
-                            model=model,
+                            model=clean_model,
                             agent=agent,
                             choices=[StreamChoice(delta=DeltaContent(content=content))],
                             system_fingerprint=session.conversation_id or session.session_id,
@@ -349,7 +354,7 @@ async def _handle_streaming(
             error_chunk = ChatCompletionChunk(
                 id=completion_id,
                 created=created,
-                model=model,
+                model=clean_model,
                 agent=agent,
                 choices=[StreamChoice(
                     delta=DeltaContent(content=f"\n\n[Error: {e}]"),
@@ -382,7 +387,8 @@ async def _handle_interactive(
     session: AgySession,
     prompt: str,
     agent: str,
-    model: str,
+    clean_model: str,
+    agy_target_model: str,
     json_schema: dict | None,
 ) -> ChatCompletionResponse:
     """Handle interactive PTY-backed chat completion.
@@ -394,7 +400,7 @@ async def _handle_interactive(
         interactive = InteractiveSession(
             agent=agent,
             workspace=session.workspace or settings.agy_default_workspace,
-            model=model,
+            model=agy_target_model,
             mode=request.mode,
             auto_approve=request.dangerously_skip_permissions,
             conversation_id=session.conversation_id,
@@ -423,7 +429,7 @@ async def _handle_interactive(
     )
 
     return ChatCompletionResponse(
-        model=model,
+        model=clean_model,
         agent=agent,
         choices=[
             Choice(

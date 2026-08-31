@@ -22,7 +22,7 @@ class AgySession:
 
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     agent: str = "default"
-    model: str = "Gemini 3.6 Flash (High)"
+    model: str = "Gemini 3.7 Flash"
     conversation_id: str | None = None  # agy's conversation UUID
     workspace: str | None = None
     mode: str = "headless"  # "headless" or "interactive"

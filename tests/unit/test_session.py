@@ -13,7 +13,7 @@ class TestAgySession:
         assert session.session_id is not None
         assert len(session.session_id) == 32  # hex UUID
         assert session.agent == "default"
-        assert session.model == "Gemini 3.6 Flash (High)"
+        assert session.model == "Gemini 3.7 Flash"
         assert session.conversation_id is None
         assert session.workspace is None
         assert session.turn_count == 0

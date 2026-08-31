@@ -7,7 +7,7 @@ class TestChatCompletionsNonStreaming:
     """Tests for non-streaming chat completions."""
 
     async def test_basic_completion(self, client):
-        """Test non-streaming chat completion returns OpenAI-compatible response."""
+        """Test non-streaming chat completion returns OpenAI-compatible response with clean model."""
         mock_result = {
             "conversation_id": "test-conv-123",
             "status": "SUCCESS",
@@ -19,11 +19,11 @@ class TestChatCompletionsNonStreaming:
             },
         }
 
-        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result):
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
             resp = await client.post(
                 "/v1/chat/completions",
                 json={
-                    "model": "Gemini 3.6 Flash (High)",
+                    "model": "Gemini 3.7 Flash",
                     "agent": "default",
                     "messages": [{"role": "user", "content": "Hello"}],
                     "stream": False,
@@ -33,13 +33,59 @@ class TestChatCompletionsNonStreaming:
         assert resp.status_code == 200
         data = resp.json()
         assert data["object"] == "chat.completion"
-        assert data["model"] == "Gemini 3.6 Flash (High)"
+        assert data["model"] == "Gemini 3.7 Flash"
         assert data["agent"] == "default"
         assert data["choices"][0]["message"]["content"] == "Hello! How can I help?"
         assert data["choices"][0]["message"]["role"] == "assistant"
         assert data["choices"][0]["finish_reason"] == "stop"
         assert data["usage"]["prompt_tokens"] == 100
         assert data["usage"]["completion_tokens"] == 10
+        # By default high reflection is used for execution
+        assert mock.call_args.kwargs["model"] == "Gemini 3.7 Flash (High)"
+
+    async def test_reflection_selection(self, client):
+        """Test passing reflection='low' correctly targets Gemini 3.7 Flash (Low)."""
+        mock_result = {
+            "conversation_id": "test-conv-low",
+            "response": "Fast response",
+            "usage": {},
+        }
+
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+            resp = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "Gemini 3.7 Flash",
+                    "reflection": "low",
+                    "messages": [{"role": "user", "content": "Quick answer"}],
+                },
+            )
+
+        assert resp.status_code == 200
+        assert mock.call_args.kwargs["model"] == "Gemini 3.7 Flash (Low)"
+        assert resp.json()["model"] == "Gemini 3.7 Flash"
+
+    async def test_reasoning_effort_selection(self, client):
+        """Test passing reasoning_effort='medium' targets Gemini 3.7 Flash (Medium)."""
+        mock_result = {
+            "conversation_id": "test-conv-med",
+            "response": "Medium response",
+            "usage": {},
+        }
+
+        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
+            resp = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "Gemini 3.7 Flash",
+                    "reasoning_effort": "medium",
+                    "messages": [{"role": "user", "content": "Medium answer"}],
+                },
+            )
+
+        assert resp.status_code == 200
+        assert mock.call_args.kwargs["model"] == "Gemini 3.7 Flash (Medium)"
+        assert resp.json()["model"] == "Gemini 3.7 Flash"
 
     async def test_system_message_included(self, client):
         """Test that system messages are included in the prompt."""
@@ -111,7 +157,7 @@ class TestChatCompletionsNonStreaming:
                 "/v1/chat/completions",
                 json={
                     "agent": "code_reviewer",
-                    "model": "Claude 3.7 Sonnet",
+                    "model": "Claude Sonnet 4.6",
                     "messages": [{"role": "user", "content": "Hi"}],
                 },
             )
@@ -119,34 +165,13 @@ class TestChatCompletionsNonStreaming:
         assert resp.status_code == 200
         call_args = mock.call_args
         assert call_args.kwargs["agent"] == "code_reviewer"
-        assert call_args.kwargs["model"] == "Claude 3.7 Sonnet"
+        assert "Claude Sonnet 4.6" in call_args.kwargs["model"]
         data = resp.json()
         assert data["agent"] == "code_reviewer"
-        assert data["model"] == "Claude 3.7 Sonnet"
-
-    async def test_model_with_agent_name_compatibility(self, client):
-        """Test passing custom agent name in model field maps to agent with default model."""
-        mock_result = {
-            "conversation_id": "test-conv",
-            "response": "ok",
-            "usage": {},
-        }
-
-        with patch("backend.routes.chat.run_agy", new_callable=AsyncMock, return_value=mock_result) as mock:
-            await client.post(
-                "/v1/chat/completions",
-                json={
-                    "model": "custom-agent",
-                    "messages": [{"role": "user", "content": "Hi"}],
-                },
-            )
-
-        call_args = mock.call_args
-        assert call_args.kwargs["agent"] == "custom-agent"
-        assert call_args.kwargs["model"] == "Gemini 3.6 Flash (High)"
+        assert data["model"] == "Claude Sonnet 4.6"
 
     async def test_missing_fields_defaults(self, client):
-        """Test that requests omitting agent and model use settings defaults."""
+        """Test that requests omitting agent and model use settings defaults (Gemini 3.7 Flash)."""
         mock_result = {
             "conversation_id": "test-conv-raw",
             "response": "raw ok",
@@ -162,10 +187,10 @@ class TestChatCompletionsNonStreaming:
             )
 
         assert resp.status_code == 200
-        assert resp.json()["model"] == "Gemini 3.6 Flash (High)"
+        assert resp.json()["model"] == "Gemini 3.7 Flash"
         assert resp.json()["agent"] == "default"
         assert mock.call_args.kwargs["agent"] == "default"
-        assert mock.call_args.kwargs["model"] == "Gemini 3.6 Flash (High)"
+        assert mock.call_args.kwargs["model"] == "Gemini 3.7 Flash (High)"
 
 
 class TestChatCompletionsStreaming:

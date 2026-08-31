@@ -34,15 +34,15 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
     interactive: bool = Field(default=False, description="Whether to use persistent interactive PTY session")
     mode: str | None = Field(default=None, description="agy execution mode (e.g. plan, accept-edits)")
     dangerously_skip_permissions: bool = Field(default=False, description="Explicit opt-in to auto-approve tool execution")
+    reflection: str = Field(default="high", description="Reflection/reasoning effort level (low, medium, high)")
     context_window: int = Field(default=131072, description="Context window size")
     num_output: int = Field(default=4096, description="Max generation tokens")
-    model_name: str = Field(default="default", description="Model name identifier")
+    model_name: str = Field(default="Gemini 3.7 Flash", description="Model name identifier")
     conversation_id: str | None = Field(default=None, description="Active session conversation ID")
     timeout: float = Field(default=180.0, description="HTTP timeout in seconds")
 
     def __init__(self, set_as_default: bool = False, **data: Any):
         super().__init__(**data)
-        self.model_name = self.agent
         if set_as_default:
             from llama_index.core import Settings
             Settings.llm = self
@@ -52,6 +52,7 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
         payload: dict[str, Any] = {
             "model": self.model_name,
             "agent": self.agent,
+            "reflection": self.reflection,
             "messages": [{"role": "user", "content": prompt}],
             "interactive": self.interactive,
             "dangerously_skip_permissions": self.dangerously_skip_permissions,

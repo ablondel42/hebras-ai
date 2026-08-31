@@ -7,14 +7,15 @@ Start the server first:  uvicorn backend.main:app --reload --port 8000
 Then run this:           python3 scripts/test_cli.py
 """
 import json
-
 import httpx
+import readline  # enables arrow keys and history in input()
 
 # ── Configuration ────────────────────────────────────────────────
 
 BASE_URL = "http://localhost:8000"
 DEFAULT_AGENT = "default"
-DEFAULT_MODEL = "Gemini 3.6 Flash (High)"
+DEFAULT_MODEL = "Gemini 3.7 Flash"
+DEFAULT_REFLECTION = "high"
 
 # ── Colors ───────────────────────────────────────────────────────
 
@@ -45,13 +46,14 @@ def print_help():
 {BOLD}Available commands:{RESET}
 
   {GREEN}agents{RESET}                  List available agent personas (GET /v1/agents)
-  {GREEN}agent{RESET}  {DIM}<name>{RESET}          Switch active agent persona (e.g. default, code_reviewer)
+  {GREEN}agent{RESET}      {DIM}<name>{RESET}      Switch active agent persona (e.g. default, code_reviewer)
   {GREEN}models{RESET}                  List available LLM models (GET /v1/models)
-  {GREEN}model{RESET}  {DIM}<name>{RESET}          Switch active LLM model (e.g. Gemini 3.6 Flash (High))
-  {GREEN}chat{RESET}   {DIM}<message>{RESET}        Send a non-streaming chat message
-  {GREEN}stream{RESET} {DIM}<message>{RESET}        Send a streaming chat message (SSE)
-  {GREEN}schema{RESET} {DIM}<message>{RESET}        Send with JSON schema enforcement
-  {GREEN}system{RESET} {DIM}<instruction>{RESET}    Set a system prompt for subsequent messages
+  {GREEN}model{RESET}      {DIM}<name>{RESET}      Switch active LLM model (e.g. Gemini 3.7 Flash)
+  {GREEN}level{RESET}      {DIM}<level>{RESET}     Switch reflection level (low, medium, high)
+  {GREEN}chat{RESET}       {DIM}<message>{RESET}    Send a non-streaming chat message
+  {GREEN}stream{RESET}     {DIM}<message>{RESET}    Send a streaming chat message (SSE)
+  {GREEN}schema{RESET}     {DIM}<message>{RESET}    Send with JSON schema enforcement
+  {GREEN}system{RESET}     {DIM}<inst>{RESET}       Set a system prompt for subsequent messages
   {GREEN}multi{RESET}                   Start an interactive multi-turn conversation
   {GREEN}raw{RESET}                     Send a raw JSON payload
   {GREEN}health{RESET}                  Check if the server is running
@@ -130,6 +132,7 @@ def cmd_chat(
     message: str,
     agent: str,
     model: str,
+    reflection: str = "high",
     system_prompt: str | None = None,
     stream: bool = False,
     json_schema: dict | None = None,
@@ -144,6 +147,7 @@ def cmd_chat(
     payload = {
         "model": model,
         "agent": agent,
+        "reflection": reflection,
         "messages": messages,
         "stream": stream,
     }
@@ -159,7 +163,7 @@ def cmd_chat(
         payload["conversation_id"] = conversation_id
 
     mode = "streaming" if stream else "non-streaming"
-    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, model: {model}, {mode}){RESET}")
+    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, model: {model}, reflection: {reflection}, {mode}){RESET}")
 
     try:
         if stream:
@@ -241,9 +245,9 @@ def _handle_stream(payload, agent_name: str, model_name: str):
     }
 
 
-def cmd_multi_turn(agent: str, model: str, system_prompt: str | None = None):
+def cmd_multi_turn(agent: str, model: str, reflection: str, system_prompt: str | None = None):
     """Interactive multi-turn conversation."""
-    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}, model: {model}){RESET} {DIM}(type 'done' to exit){RESET}")
+    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}, model: {model}, reflection: {reflection}){RESET} {DIM}(type 'done' to exit){RESET}")
     conversation_id = None
     turn = 0
 
@@ -260,6 +264,7 @@ def cmd_multi_turn(agent: str, model: str, system_prompt: str | None = None):
             message=user_input,
             agent=agent,
             model=model,
+            reflection=reflection,
             system_prompt=system_prompt if turn == 1 else None,
             conversation_id=conversation_id,
         )
@@ -314,11 +319,12 @@ def main():
 
     current_agent = DEFAULT_AGENT
     current_model = DEFAULT_MODEL
+    current_reflection = DEFAULT_REFLECTION
     system_prompt = None
 
     while True:
         try:
-            prompt_str = f"{CYAN}hebras [{current_agent} | {current_model}]>{RESET} "
+            prompt_str = f"{CYAN}hebras [{current_agent} | {current_model} | {current_reflection}]>{RESET} "
             raw_input = input(prompt_str).strip()
         except (EOFError, KeyboardInterrupt):
             print(f"\n{DIM}Goodbye!{RESET}")
@@ -364,6 +370,17 @@ def main():
             else:
                 print(f"Active model: {BOLD}{current_model}{RESET}")
 
+        elif cmd in ("level", "reflection", "effort"):
+            if arg:
+                level = arg.strip().lower()
+                if level in ("low", "medium", "high"):
+                    current_reflection = level
+                    print(f"{GREEN}Switched reflection level to: {BOLD}{current_reflection}{RESET}")
+                else:
+                    print(f"{YELLOW}Invalid reflection level '{arg}'. Options: low, medium, high{RESET}")
+            else:
+                print(f"Active reflection level: {BOLD}{current_reflection}{RESET}")
+
         elif cmd == "system":
             if arg:
                 system_prompt = arg
@@ -378,13 +395,13 @@ def main():
             if not arg:
                 print(f"{YELLOW}Usage: chat <message>{RESET}")
                 continue
-            cmd_chat(arg, current_agent, current_model, system_prompt)
+            cmd_chat(arg, current_agent, current_model, current_reflection, system_prompt)
 
         elif cmd == "stream":
             if not arg:
                 print(f"{YELLOW}Usage: stream <message>{RESET}")
                 continue
-            cmd_chat(arg, current_agent, current_model, system_prompt, stream=True)
+            cmd_chat(arg, current_agent, current_model, current_reflection, system_prompt, stream=True)
 
         elif cmd == "schema":
             if not arg:
@@ -398,17 +415,17 @@ def main():
                 },
                 "required": ["files", "summary"],
             }
-            cmd_chat(arg, current_agent, current_model, system_prompt, json_schema=file_list_schema)
+            cmd_chat(arg, current_agent, current_model, current_reflection, system_prompt, json_schema=file_list_schema)
 
         elif cmd == "multi":
-            cmd_multi_turn(current_agent, current_model, system_prompt)
+            cmd_multi_turn(current_agent, current_model, current_reflection, system_prompt)
 
         elif cmd == "raw":
             cmd_raw()
 
         else:
             # Treat unrecognized input as a chat message for convenience
-            cmd_chat(raw_input, current_agent, current_model, system_prompt)
+            cmd_chat(raw_input, current_agent, current_model, current_reflection, system_prompt)
 
 
 if __name__ == "__main__":

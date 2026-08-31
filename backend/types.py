@@ -58,6 +58,8 @@ class ChatCompletionRequest(BaseModel):
     interactive: bool = False  # True = persistent background PTY session
     mode: str | None = None  # e.g. 'plan' or 'accept-edits'
     dangerously_skip_permissions: bool = False  # Explicit opt-in required for auto-approving tools
+    reflection: Literal["low", "medium", "high"] | None = None  # Level of reflection/thinking
+    reasoning_effort: Literal["low", "medium", "high"] | None = None  # OpenAI standard field for reasoning effort
 
 
 # ── Response Models ─────────────────────────────────────────────
