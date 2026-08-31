@@ -14,6 +14,7 @@ from backend.config import settings
 from backend.routes.models import resolve_agy_model_target
 from backend.session import AgySession
 from backend.session_manager import SessionManager, SessionNotFound, SessionPoolFull
+from backend.turn_logger import log_turn
 from backend.types import (
     ChatCompletionChunk,
     ChatCompletionMessage,
@@ -132,7 +133,7 @@ async def chat_completions(
     reflection = request.reflection or request.reasoning_effort or settings.agy_default_reflection
     clean_model, agy_target_model = await resolve_agy_model_target(raw_model_input, reflection)
 
-    prompt, _ = _extract_prompt_and_system(request)
+    prompt, system_message = _extract_prompt_and_system(request)
     json_schema = _extract_json_schema(request)
 
     if not prompt:
@@ -176,15 +177,15 @@ async def chat_completions(
 
     if is_interactive:
         return await _handle_interactive(
-            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+            request, session, prompt, system_message, agent, clean_model, agy_target_model, reflection, json_schema
         )
     elif request.stream:
         return await _handle_streaming(
-            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+            request, session, prompt, system_message, agent, clean_model, agy_target_model, reflection, json_schema
         )
     else:
         return await _handle_non_streaming(
-            request, session, prompt, agent, clean_model, agy_target_model, json_schema
+            request, session, prompt, system_message, agent, clean_model, agy_target_model, reflection, json_schema
         )
 
 
@@ -192,12 +193,15 @@ async def _handle_non_streaming(
     request: ChatCompletionRequest,
     session: AgySession,
     prompt: str,
+    system_message: str | None,
     agent: str,
     clean_model: str,
     agy_target_model: str,
+    reflection: str,
     json_schema: dict | None,
 ) -> ChatCompletionResponse:
     """Handle non-streaming chat completion."""
+    start_t = time.monotonic()
     try:
         result = await run_agy(
             prompt=prompt,
@@ -211,6 +215,8 @@ async def _handle_non_streaming(
         logger.error(f"agy process error: {e}", extra={"stderr": e.stderr})
         raise HTTPException(status_code=502, detail=f"AGY execution failed: {e}")
 
+    duration_s = time.monotonic() - start_t
+
     # Update session with conversation_id from agy response
     if result.get("conversation_id"):
         session.conversation_id = result["conversation_id"]
@@ -220,17 +226,34 @@ async def _handle_non_streaming(
     if isinstance(response_text, dict):
         response_text = json.dumps(response_text)
 
-    logger.info(
-        f"Non-streaming completion finished: conversation_id='{session.conversation_id}' "
-        f"response_length={len(response_text)}"
-    )
-
     # Extract usage info if available
     usage_data = result.get("usage", {})
     usage = UsageInfo(
         prompt_tokens=usage_data.get("input_tokens", 0),
         completion_tokens=usage_data.get("output_tokens", 0),
         total_tokens=usage_data.get("total_tokens", 0),
+    )
+
+    # Log turn for evaluation
+    log_turn(
+        conversation_id=session.conversation_id or session.session_id,
+        turn=session.turn_count,
+        agent=agent,
+        model=clean_model,
+        target_model=agy_target_model,
+        reflection=reflection,
+        mode="non-streaming",
+        prompt=prompt,
+        system_prompt=system_message,
+        response_text=response_text,
+        usage=usage_data,
+        duration_s=duration_s,
+        workspace=session.workspace,
+    )
+
+    logger.info(
+        f"Non-streaming completion finished: conversation_id='{session.conversation_id}' "
+        f"duration={duration_s:.2f}s response_length={len(response_text)}"
     )
 
     return ChatCompletionResponse(
@@ -251,17 +274,21 @@ async def _handle_streaming(
     request: ChatCompletionRequest,
     session: AgySession,
     prompt: str,
+    system_message: str | None,
     agent: str,
     clean_model: str,
     agy_target_model: str,
+    reflection: str,
     json_schema: dict | None,
 ) -> StreamingResponse:
     """Handle streaming chat completion via SSE."""
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     created = int(time.time())
+    start_t = time.monotonic()
 
     async def event_generator():
         collected_text_parts: list[str] = []
+        last_usage_data: dict[str, Any] = {}
 
         # First chunk: role indicator
         first_chunk = ChatCompletionChunk(
@@ -313,11 +340,11 @@ async def _handle_streaming(
 
                 elif event_name == "result":
                     res_data = event.get("result", {})
-                    usage_data = res_data.get("usage", {})
+                    last_usage_data = res_data.get("usage", {})
                     usage = UsageInfo(
-                        prompt_tokens=usage_data.get("input_tokens", 0),
-                        completion_tokens=usage_data.get("output_tokens", 0),
-                        total_tokens=usage_data.get("total_tokens", 0),
+                        prompt_tokens=last_usage_data.get("input_tokens", 0),
+                        completion_tokens=last_usage_data.get("output_tokens", 0),
+                        total_tokens=last_usage_data.get("total_tokens", 0),
                     )
                     # Final chunk with finish_reason
                     final_chunk = ChatCompletionChunk(
@@ -364,9 +391,28 @@ async def _handle_streaming(
             yield f"data: {error_chunk.model_dump_json()}\n\n"
 
         full_response = "".join(collected_text_parts)
+        duration_s = time.monotonic() - start_t
+
+        # Log turn for evaluation
+        log_turn(
+            conversation_id=session.conversation_id or session.session_id,
+            turn=session.turn_count,
+            agent=agent,
+            model=clean_model,
+            target_model=agy_target_model,
+            reflection=reflection,
+            mode="streaming",
+            prompt=prompt,
+            system_prompt=system_message,
+            response_text=full_response,
+            usage=last_usage_data,
+            duration_s=duration_s,
+            workspace=session.workspace,
+        )
+
         logger.info(
             f"Streaming completion finished: conversation_id='{session.conversation_id}' "
-            f"response='{full_response[:120]}...'"
+            f"duration={duration_s:.2f}s response='{full_response[:120]}...'"
         )
 
         yield "data: [DONE]\n\n"
@@ -386,9 +432,11 @@ async def _handle_interactive(
     request: ChatCompletionRequest,
     session: AgySession,
     prompt: str,
+    system_message: str | None,
     agent: str,
     clean_model: str,
     agy_target_model: str,
+    reflection: str,
     json_schema: dict | None,
 ) -> ChatCompletionResponse:
     """Handle interactive PTY-backed chat completion.
@@ -396,6 +444,7 @@ async def _handle_interactive(
     Creates or reuses a persistent agy TUI session.
     Returns standard OpenAI-format response with clean text.
     """
+    start_t = time.monotonic()
     if session.interactive is None or not session.interactive.is_alive():
         interactive = InteractiveSession(
             agent=agent,
@@ -421,11 +470,28 @@ async def _handle_interactive(
         logger.error(f"Interactive agy session error: {e}")
         raise HTTPException(status_code=502, detail=f"Interactive agy session error: {e}")
 
+    duration_s = time.monotonic() - start_t
     session.touch()
+
+    # Log turn for evaluation
+    log_turn(
+        conversation_id=session.conversation_id or session.session_id,
+        turn=session.turn_count,
+        agent=agent,
+        model=clean_model,
+        target_model=agy_target_model,
+        reflection=reflection,
+        mode="interactive",
+        prompt=prompt,
+        system_prompt=system_message,
+        response_text=response_text,
+        duration_s=duration_s,
+        workspace=session.workspace,
+    )
 
     logger.info(
         f"Interactive completion finished: session_id='{session.session_id}' "
-        f"response='{response_text[:120]}...'"
+        f"duration={duration_s:.2f}s response='{response_text[:120]}...'"
     )
 
     return ChatCompletionResponse(
