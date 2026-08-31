@@ -1,21 +1,20 @@
-"""Structured JSON logging configuration and file handler setup."""
+"""Structured JSON logging configuration and file handler setup with user timezone."""
 import json
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import sys
-from datetime import UTC, datetime
 
 from backend.config import settings
-from backend.turn_logger import is_test_environment
+from backend.turn_logger import get_log_datetime, is_test_environment
 
 
 class JSONFormatter(logging.Formatter):
-    """Structured JSON log formatter."""
+    """Structured JSON log formatter with local timezone timestamps."""
 
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": get_log_datetime().isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

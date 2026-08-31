@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_format: str = "json"  # "json" or "text"
+    log_timezone: str | None = None  # None = host local timezone, e.g. "Europe/Paris"
 
     # Auth (future)
     # api_key: str | None = None

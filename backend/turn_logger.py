@@ -2,9 +2,10 @@
 import logging
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from backend.config import settings
 
@@ -20,6 +21,16 @@ def is_test_environment() -> bool:
     if "pytest" in sys.modules:
         return True
     return False
+
+
+def get_log_datetime() -> datetime:
+    """Return the current datetime in the configured or local system timezone."""
+    if settings.log_timezone:
+        try:
+            return datetime.now(ZoneInfo(settings.log_timezone))
+        except Exception as e:
+            logger.debug(f"Invalid or unsupported log timezone '{settings.log_timezone}': {e}")
+    return datetime.now().astimezone()
 
 
 def log_turn(
@@ -68,7 +79,9 @@ def log_turn(
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / f"{conversation_id}.log"
 
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now = get_log_datetime()
+        tz_name = now.strftime("%Z") or now.strftime("%z")
+        timestamp = now.strftime(f"%Y-%m-%d %H:%M:%S {tz_name}").strip()
 
         tokens_line = ""
         if usage:

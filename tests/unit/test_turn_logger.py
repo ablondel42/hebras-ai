@@ -1,16 +1,49 @@
-"""Unit tests for backend/turn_logger.py."""
+"""Unit tests for backend/turn_logger.py and logging timezone resolution."""
+import logging
 import tempfile
 from pathlib import Path
 
-from backend.turn_logger import is_test_environment, log_turn
+from backend.logging_config import JSONFormatter
+from backend.turn_logger import get_log_datetime, is_test_environment, log_turn
 
 
 class TestTurnLogger:
-    """Tests for turn evaluation logging."""
+    """Tests for turn evaluation logging and timezone resolution."""
 
     def test_is_test_environment_active(self):
         """Verify is_test_environment detects running under pytest."""
         assert is_test_environment() is True
+
+    def test_get_log_datetime_default(self):
+        """Verify get_log_datetime returns datetime with timezone info."""
+        dt = get_log_datetime()
+        assert dt.tzinfo is not None
+
+    def test_get_log_datetime_custom_timezone(self, monkeypatch):
+        """Verify custom HEBRAS_LOG_TIMEZONE is respected."""
+        monkeypatch.setattr("backend.turn_logger.settings.log_timezone", "America/New_York")
+        dt = get_log_datetime()
+        assert dt.tzinfo is not None
+        assert "EDT" in dt.tzname() or "EST" in dt.tzname() or "New_York" in str(dt.tzinfo)
+
+    def test_json_formatter_includes_tz_offset(self):
+        """Verify JSONFormatter produces timestamp with timezone offset."""
+        formatter = JSONFormatter()
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="Hello log",
+            args=(),
+            exc_info=None,
+        )
+        output = formatter.format(record)
+        assert "timestamp" in output
+        # ISO timestamp with timezone offset (e.g. +02:00 or -04:00 or Z)
+        import json
+        data = json.loads(output)
+        assert ("+" in data["timestamp"]) or ("-" in data["timestamp"][10:])
 
     def test_log_turn_skipped_in_test_without_force(self):
         """Verify log_turn skips writing when running under pytest without force_write."""
