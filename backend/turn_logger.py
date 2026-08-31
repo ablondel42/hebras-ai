@@ -1,4 +1,5 @@
 """Turn logger for recording complete prompts, responses, and evaluation metadata."""
+import json
 import logging
 import os
 import sys
@@ -33,6 +34,52 @@ def get_log_datetime() -> datetime:
     return datetime.now().astimezone()
 
 
+def extract_turn_thinking(conversation_id: str | None, since_line: int = 0) -> str:
+    """Extract LLM thinking/reflection text from the Antigravity transcript for the turn.
+
+    Args:
+        conversation_id: Conversation UUID.
+        since_line: Line index to start reading from.
+
+    Returns:
+        Concatenated thinking/reflection string.
+    """
+    if not conversation_id:
+        return ""
+
+    transcript_path = (
+        Path.home()
+        / ".gemini"
+        / "antigravity-cli"
+        / "brain"
+        / conversation_id
+        / ".system_generated"
+        / "logs"
+        / "transcript_full.jsonl"
+    )
+
+    if not transcript_path.exists():
+        return ""
+
+    thinking_parts: list[str] = []
+    try:
+        with open(transcript_path, encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f):
+                if i < since_line or not line.strip():
+                    continue
+                try:
+                    step = json.loads(line)
+                    t = step.get("thinking")
+                    if t and isinstance(t, str) and t.strip():
+                        thinking_parts.append(t.strip())
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.debug(f"Error reading transcript thinking for {conversation_id}: {e}")
+
+    return "\n\n".join(thinking_parts)
+
+
 def log_turn(
     conversation_id: str,
     turn: int,
@@ -44,12 +91,13 @@ def log_turn(
     prompt: str,
     system_prompt: str | None,
     response_text: str,
+    thinking: str | None = None,
     usage: dict[str, Any] | None = None,
     duration_s: float | None = None,
     workspace: str | None = None,
     force_write: bool = False,
 ) -> Path | None:
-    """Log a complete turn (prompt + response + metadata) to the conversation log file.
+    """Log a complete turn (prompt + response + metadata + reflection) to the conversation log file.
 
     Args:
         conversation_id: Unique conversation UUID.
@@ -62,6 +110,7 @@ def log_turn(
         prompt: The user prompt text.
         system_prompt: Optional system prompt text.
         response_text: The complete generated response text.
+        thinking: Optional extracted thinking/reflection text.
         usage: Optional token usage dict.
         duration_s: Optional duration in seconds.
         workspace: Optional workspace directory path.
@@ -93,6 +142,10 @@ def log_turn(
 
         dur_line = f"Duration: {duration_s:.3f}s\n" if duration_s is not None else ""
 
+        thinking_section = ""
+        if thinking and thinking.strip():
+            thinking_section = f"{'-' * 80}\n[REFLECTION / THINKING]\n{thinking.strip()}\n\n"
+
         entry = (
             f"{'=' * 80}\n"
             f"[{timestamp}] Conversation ID: {conversation_id} | Turn: {turn}\n"
@@ -102,7 +155,8 @@ def log_turn(
             f"{tokens_line}"
             f"{'-' * 80}\n"
             f"[SYSTEM INSTRUCTIONS]\n{system_prompt or '(None)'}\n\n"
-            f"[USER PROMPT]\n{prompt}\n"
+            f"[USER PROMPT]\n{prompt}\n\n"
+            f"{thinking_section}"
             f"{'-' * 80}\n"
             f"[RESPONSE]\n{response_text}\n"
             f"{'=' * 80}\n\n"

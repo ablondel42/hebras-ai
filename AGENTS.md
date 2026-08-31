@@ -20,7 +20,9 @@ Welcome to **hebras-ai**. This document provides essential architectural context
   2. **Streaming (SSE)**: Real-time chunked streaming via `--output-format stream-json` yielding Server-Sent Events (SSE), supporting both single-turn and multi-turn conversations with `--conversation <id>`.
   3. **Interactive (PTY)**: Persistent background pseudoterminal process managed via `pexpect`, delivering prompts via carriage return (`\r`) and synchronizing responses deterministically from structured transcript logs (`transcript_full.jsonl`).
 - **Session & Concurrency Management**: In-memory session tracking with turn counts, idle timeouts, background cleanup, and concurrency locks.
-- **Evaluation & Inspection Logging**: Complete turn logs written to `log/<conversation_id>.log` containing full prompts, responses, duration, and token usage breakdowns.
+- **Evaluation & Deep Inspection Logging**:
+  - `log/<conversation_id>.log`: Complete turn logs containing full prompts, thinking/reflection, responses, duration, and token usage breakdowns.
+  - `log/hebras.log`: Server log with local timezone offsets (`+02:00`). When `HEBRAS_LOG_LEVEL=DEV`, records the complete user-model message exchange including LLM reflection/thinking.
 
 ---
 
@@ -72,7 +74,7 @@ hebras-ai/
 ├── backend/                       # Backend Application Package
 │   ├── __init__.py
 │   ├── main.py                    # App factory (`create_app`), lifespan, CORS, entry point
-│   ├── config.py                  # Settings (BaseSettings) reading dev.env / HEBRAS_* env vars
+│   ├── config.py                  # Settings (BaseSettings) reading .env / dev.env / HEBRAS_* env vars
 │   ├── types.py                   # Pydantic models for OpenAI request/response/streaming formats
 │   ├── session.py                 # AgySession dataclass (turn count, timestamps, agent & model IDs)
 │   ├── session_manager.py         # SessionManager pool: concurrency lock, max limit, auto-expiry
@@ -80,11 +82,11 @@ hebras-ai/
 │   ├── agy_process.py             # Subprocess execution: `run_agy` (JSON) and `stream_agy` (NDJSON)
 │   ├── agy_interactive.py         # InteractiveSession: persistent PTY via pexpect & transcript sync
 │   ├── ansi_utils.py              # ANSI stripping and TUI chrome/spinner/banner extraction
-│   ├── logging_config.py          # Structured JSON log formatter and rotating file logger
-│   ├── turn_logger.py             # Human-readable evaluation and turn logger (`log/<id>.log`)
+│   ├── logging_config.py          # Structured JSON log formatter (DEV level, local timezone)
+│   ├── turn_logger.py             # Human-readable evaluation and turn logger (`log/<id>.log`, reflection extraction)
 │   └── routes/                    # API Route Definitions
 │       ├── __init__.py
-│       ├── chat.py                # POST /v1/chat/completions endpoint (streaming, non-streaming, PTY)
+│       ├── chat.py                # POST /v1/chat/completions endpoint (streaming, non-streaming, PTY, DEV log)
 │       ├── models.py              # GET /v1/models dynamic model discovery & reflection resolver
 │       └── agents.py              # GET /v1/agents dynamic agent persona discovery
 │
@@ -115,6 +117,7 @@ hebras-ai/
         ├── test_ansi_utils.py     # Unit tests for ANSI stripping & chrome extraction
         ├── test_llama_index_extended.py
         ├── test_llama_index_integration.py
+        ├── test_logging_dev_level.py # Unit tests for DEV log level & reflection extraction
         ├── test_safe_runner.py    # Unit tests for safe_run_command & timeout enforcement
         ├── test_session.py        # Unit tests for AgySession lifecycle
         ├── test_session_manager.py# Unit tests for SessionManager pool & eviction
@@ -137,6 +140,8 @@ Settings are managed in `backend/config.py` using `pydantic-settings`.
 | `HEBRAS_AGY_DEFAULT_AGENT` | `str` | `"default"` | Default agent persona if unspecified |
 | `HEBRAS_AGY_DEFAULT_MODEL` | `str` | `"Gemini 3.7 Flash"` | Default clean model name |
 | `HEBRAS_AGY_DEFAULT_REFLECTION` | `str` | `"high"` | Default reflection level (`high`, `medium`, `low`) |
+| `HEBRAS_LOG_LEVEL` | `str` | `"INFO"` | Log level: `INFO`, `DEBUG`, or `DEV` (records all messages & reflection) |
+| `HEBRAS_LOG_TIMEZONE` | `str | None` | `None` | Timezone (e.g. `Europe/Paris`, default: host local timezone) |
 | `HEBRAS_MODEL_CACHE_TTL` | `int` | `300` | In-memory cache TTL for discovered models (seconds) |
 
 ---

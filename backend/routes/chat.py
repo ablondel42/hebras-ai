@@ -14,7 +14,7 @@ from backend.config import settings
 from backend.routes.models import resolve_agy_model_target
 from backend.session import AgySession
 from backend.session_manager import SessionManager, SessionNotFound, SessionPoolFull
-from backend.turn_logger import log_turn
+from backend.turn_logger import extract_turn_thinking, log_turn
 from backend.types import (
     ChatCompletionChunk,
     ChatCompletionMessage,
@@ -28,6 +28,7 @@ from backend.types import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+DEV_LEVEL = 5
 
 
 def get_session_manager(request: Request) -> SessionManager:
@@ -234,6 +235,9 @@ async def _handle_non_streaming(
         total_tokens=usage_data.get("total_tokens", 0),
     )
 
+    # Extract thinking/reflection from transcript if present
+    thinking = extract_turn_thinking(session.conversation_id)
+
     # Log turn for evaluation
     log_turn(
         conversation_id=session.conversation_id or session.session_id,
@@ -246,9 +250,30 @@ async def _handle_non_streaming(
         prompt=prompt,
         system_prompt=system_message,
         response_text=response_text,
+        thinking=thinking,
         usage=usage_data,
         duration_s=duration_s,
         workspace=session.workspace,
+    )
+
+    # Special DEV log level recording full messages and reflection in hebras.log
+    logger.log(
+        DEV_LEVEL,
+        f"Chat turn {session.turn_count} [DEV]",
+        extra={
+            "conversation_id": session.conversation_id or session.session_id,
+            "turn": session.turn_count,
+            "agent": agent,
+            "model": clean_model,
+            "target_model": agy_target_model,
+            "reflection_level": reflection,
+            "mode": "non-streaming",
+            "request_messages": [m.model_dump() for m in request.messages],
+            "thinking": thinking,
+            "response": response_text,
+            "duration_s": round(duration_s, 3),
+            "usage": usage_data,
+        },
     )
 
     logger.info(
@@ -393,6 +418,9 @@ async def _handle_streaming(
         full_response = "".join(collected_text_parts)
         duration_s = time.monotonic() - start_t
 
+        # Extract thinking/reflection from transcript if present
+        thinking = extract_turn_thinking(session.conversation_id)
+
         # Log turn for evaluation
         log_turn(
             conversation_id=session.conversation_id or session.session_id,
@@ -405,9 +433,30 @@ async def _handle_streaming(
             prompt=prompt,
             system_prompt=system_message,
             response_text=full_response,
+            thinking=thinking,
             usage=last_usage_data,
             duration_s=duration_s,
             workspace=session.workspace,
+        )
+
+        # Special DEV log level recording full messages and reflection in hebras.log
+        logger.log(
+            DEV_LEVEL,
+            f"Chat turn {session.turn_count} [DEV]",
+            extra={
+                "conversation_id": session.conversation_id or session.session_id,
+                "turn": session.turn_count,
+                "agent": agent,
+                "model": clean_model,
+                "target_model": agy_target_model,
+                "reflection_level": reflection,
+                "mode": "streaming",
+                "request_messages": [m.model_dump() for m in request.messages],
+                "thinking": thinking,
+                "response": full_response,
+                "duration_s": round(duration_s, 3),
+                "usage": last_usage_data,
+            },
         )
 
         logger.info(
@@ -473,6 +522,9 @@ async def _handle_interactive(
     duration_s = time.monotonic() - start_t
     session.touch()
 
+    # Extract thinking/reflection from transcript
+    thinking = extract_turn_thinking(session.conversation_id)
+
     # Log turn for evaluation
     log_turn(
         conversation_id=session.conversation_id or session.session_id,
@@ -485,8 +537,28 @@ async def _handle_interactive(
         prompt=prompt,
         system_prompt=system_message,
         response_text=response_text,
+        thinking=thinking,
         duration_s=duration_s,
         workspace=session.workspace,
+    )
+
+    # Special DEV log level recording full messages and reflection in hebras.log
+    logger.log(
+        DEV_LEVEL,
+        f"Chat turn {session.turn_count} [DEV]",
+        extra={
+            "conversation_id": session.conversation_id or session.session_id,
+            "turn": session.turn_count,
+            "agent": agent,
+            "model": clean_model,
+            "target_model": agy_target_model,
+            "reflection_level": reflection,
+            "mode": "interactive",
+            "request_messages": [m.model_dump() for m in request.messages],
+            "thinking": thinking,
+            "response": response_text,
+            "duration_s": round(duration_s, 3),
+        },
     )
 
     logger.info(

@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # Auth (future)
     # api_key: str | None = None
 
-    model_config = {"env_file": "dev.env", "env_prefix": "HEBRAS_"}
+    model_config = {"env_file": [".env", "dev.env"], "env_prefix": "HEBRAS_", "extra": "ignore"}
 
 
 settings = Settings()
