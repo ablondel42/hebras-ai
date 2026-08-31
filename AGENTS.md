@@ -168,3 +168,13 @@ Commands available in `test_cli.py`:
 - `stream <prompt>`: Send streaming chat completion via SSE.
 - `schema <prompt>`: Send completion with JSON Schema enforcement.
 - `multi [stream|sync]`: Start an interactive multi-turn conversation (defaults to real-time streaming).
+
+---
+
+## 6. Engineering Standards & Definition of Done
+
+### Real Verification Over Mocks
+- **Mocks Are Not Verification**: Mock tests are never a "Definition of Done". Unit test stubs and mock assertions only verify internal code paths, not actual operational correctness.
+- **Real In/Out Verification Required**: Only real input/output executions (against live CLI binaries, actual subprocesses, real HTTP endpoints, and verifying actual on-disk logs and output artifacts) qualify as successful completion of a task.
+- **Verification is Primordial**: Always run real execution tests, inspect the produced logs and system responses, and confirm behavior end-to-end before concluding any task.
+
