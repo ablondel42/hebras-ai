@@ -234,3 +234,58 @@ class TestChatCompletionsStreaming:
 
         # Verify [DONE] marker
         assert lines[-1] == "data: [DONE]"
+
+    async def test_multi_turn_streaming_continuation(self, client):
+        """Test multi-turn streaming passing conversation_id across turns."""
+        turn1_events = [
+            {"event": "init", "conversation_id": "multi-stream-conv-999", "init": {}},
+            {"event": "step_update", "step_update": {"text_delta": "Turn 1 answer"}},
+            {"event": "result", "result": {"status": "SUCCESS", "usage": {}}},
+        ]
+        turn2_events = [
+            {"event": "step_update", "step_update": {"text_delta": "Turn 2 response"}},
+            {"event": "result", "result": {"status": "SUCCESS", "usage": {}}},
+        ]
+
+        # Turn 1
+        async def mock_stream_turn1(*args, **kwargs):
+            for e in turn1_events:
+                yield e
+
+        with patch("backend.routes.chat.stream_agy", side_effect=mock_stream_turn1):
+            resp1 = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "agent": "default",
+                    "messages": [{"role": "user", "content": "Turn 1 prompt"}],
+                    "stream": True,
+                },
+            )
+
+        assert resp1.status_code == 200
+        lines1 = [json.loads(line[6:]) for line in resp1.text.strip().split("\n\n") if line.startswith("data: ") and line != "data: [DONE]"]
+        conv_id = lines1[1]["system_fingerprint"]
+        assert conv_id == "multi-stream-conv-999"
+
+        # Turn 2
+        async def mock_stream_turn2(*args, **kwargs):
+            # Verify kwargs or args received conversation_id
+            assert kwargs.get("conversation_id") == "multi-stream-conv-999"
+            for e in turn2_events:
+                yield e
+
+        with patch("backend.routes.chat.stream_agy", side_effect=mock_stream_turn2):
+            resp2 = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "agent": "default",
+                    "conversation_id": conv_id,
+                    "messages": [{"role": "user", "content": "Turn 2 prompt"}],
+                    "stream": True,
+                },
+            )
+
+        assert resp2.status_code == 200
+        lines2 = [json.loads(line[6:]) for line in resp2.text.strip().split("\n\n") if line.startswith("data: ") and line != "data: [DONE]"]
+        assert lines2[1]["choices"][0]["delta"]["content"] == "Turn 2 response"
+        assert lines2[1]["system_fingerprint"] == "multi-stream-conv-999"

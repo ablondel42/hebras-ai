@@ -15,11 +15,12 @@ Welcome to **hebras-ai**. This document provides essential architectural context
 - **Reflection / Reasoning Effort Control**:
   - `POST /v1/chat/completions` accepts `model` and `reflection` (or `reasoning_effort`: `low`, `medium`, `high`), dynamically mapping to the corresponding `agy` target (default: `Gemini 3.7 Flash (High)`).
 - **OpenAI-Compatible Chat Completions**: Endpoint `/v1/chat/completions` accepting `messages`, `model` (LLM model), `agent` (agent persona), `reflection` / `reasoning_effort`, `stream`, `response_format` (JSON Schema), and `interactive`.
-- **Three Execution Modes**:
+- **Execution Modes**:
   1. **Non-Streaming**: Direct CLI execution with `--output-format json`.
-  2. **Streaming (SSE)**: Real-time chunked streaming via `--output-format stream-json` yielding Server-Sent Events (SSE).
+  2. **Streaming (SSE)**: Real-time chunked streaming via `--output-format stream-json` yielding Server-Sent Events (SSE), supporting both single-turn and multi-turn conversations with `--conversation <id>`.
   3. **Interactive (PTY)**: Persistent background pseudoterminal process managed via `pexpect`, delivering prompts via carriage return (`\r`) and synchronizing responses deterministically from structured transcript logs (`transcript_full.jsonl`).
 - **Session & Concurrency Management**: In-memory session tracking with turn counts, idle timeouts, background cleanup, and concurrency locks.
+- **Evaluation & Inspection Logging**: Complete turn logs written to `log/<conversation_id>.log` containing full prompts, responses, duration, and token usage breakdowns.
 
 ---
 
@@ -32,7 +33,7 @@ flowchart TD
     ChatRouter --> SessionMgr["SessionManager (backend/session_manager.py)"]
 
     ChatRouter -->|Interactive Mode: request.interactive = true| PTYHandler["_handle_interactive()"]
-    ChatRouter -->|Stream: true| StreamHandler["_handle_streaming()"]
+    ChatRouter -->|Stream: true (Single or Multi-Turn)| StreamHandler["_handle_streaming()"]
     ChatRouter -->|Non-Streaming| SyncHandler["_handle_non_streaming()"]
 
     PTYHandler --> InteractiveSession["InteractiveSession (backend/agy_interactive.py)"]
@@ -41,12 +42,12 @@ flowchart TD
     InteractiveSession -->|Poll for MODEL PLANNER_RESPONSE| Transcript
 
     StreamHandler --> StreamAgy["stream_agy() (backend/agy_process.py)"]
-    StreamAgy -->|Subprocess --output-format stream-json| AgyStreamProc["agy Subprocess"]
+    StreamAgy -->|Subprocess --output-format stream-json [--conversation <id>]| AgyStreamProc["agy Subprocess"]
     StreamAgy -->|SSE ChatCompletionChunk data: ...| Client
 
     SyncHandler --> RunAgy["run_agy() (backend/agy_process.py)"]
     RunAgy --> SafeRunner["safe_run_command() (backend/safe_runner.py)"]
-    SafeRunner -->|Subprocess --output-format json| AgyProc["agy Subprocess"]
+    SafeRunner -->|Subprocess --output-format json [--conversation <id>]| AgyProc["agy Subprocess"]
     SyncHandler -->|ChatCompletionResponse JSON| Client
 
     FastAPI -->|HTTP GET /v1/models| ModelsRouter["Models Router (backend/routes/models.py)"]
@@ -79,10 +80,11 @@ hebras-ai/
 │   ├── agy_process.py             # Subprocess execution: `run_agy` (JSON) and `stream_agy` (NDJSON)
 │   ├── agy_interactive.py         # InteractiveSession: persistent PTY via pexpect & transcript sync
 │   ├── ansi_utils.py              # ANSI stripping and TUI chrome/spinner/banner extraction
-│   ├── logging_config.py          # Structured JSON log formatter
+│   ├── logging_config.py          # Structured JSON log formatter and rotating file logger
+│   ├── turn_logger.py             # Human-readable evaluation and turn logger (`log/<id>.log`)
 │   └── routes/                    # API Route Definitions
 │       ├── __init__.py
-│       ├── chat.py                # POST /v1/chat/completions endpoint
+│       ├── chat.py                # POST /v1/chat/completions endpoint (streaming, non-streaming, PTY)
 │       ├── models.py              # GET /v1/models dynamic model discovery & reflection resolver
 │       └── agents.py              # GET /v1/agents dynamic agent persona discovery
 │
@@ -104,7 +106,7 @@ hebras-ai/
     ├── integration/
     │   ├── __init__.py
     │   ├── test_agents_endpoint.py# Tests for /v1/agents agent persona discovery
-    │   ├── test_chat_endpoint.py  # Tests for /v1/chat/completions (sync, stream, reflection)
+    │   ├── test_chat_endpoint.py  # Tests for /v1/chat/completions (sync, stream, multi-turn)
     │   └── test_models_endpoint.py# Tests for /v1/models dynamic clean model discovery
     └── unit/
         ├── __init__.py
@@ -117,6 +119,7 @@ hebras-ai/
         ├── test_session.py        # Unit tests for AgySession lifecycle
         ├── test_session_manager.py# Unit tests for SessionManager pool & eviction
         ├── test_session_manager_concurrency.py # Concurrent session creation/deletion tests
+        ├── test_turn_logger.py    # Unit tests for turn logger & evaluation formatting
         └── test_types.py          # Unit tests for Pydantic type conversions & aliases
 ```
 
@@ -159,4 +162,4 @@ Commands available in `test_cli.py`:
 - `chat <prompt>`: Send non-streaming chat completion.
 - `stream <prompt>`: Send streaming chat completion via SSE.
 - `schema <prompt>`: Send completion with JSON Schema enforcement.
-- `multi`: Start an interactive multi-turn conversation.
+- `multi [stream|sync]`: Start an interactive multi-turn conversation (defaults to real-time streaming).

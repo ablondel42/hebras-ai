@@ -54,7 +54,7 @@ def print_help():
   {GREEN}stream{RESET}     {DIM}<message>{RESET}    Send a streaming chat message (SSE)
   {GREEN}schema{RESET}     {DIM}<message>{RESET}    Send with JSON schema enforcement
   {GREEN}system{RESET}     {DIM}<inst>{RESET}       Set a system prompt for subsequent messages
-  {GREEN}multi{RESET}                   Start an interactive multi-turn conversation
+  {GREEN}multi{RESET}      {DIM}[stream|sync]{RESET} Start interactive multi-turn conversation (default: stream)
   {GREEN}raw{RESET}                     Send a raw JSON payload
   {GREEN}health{RESET}                  Check if the server is running
   {GREEN}help{RESET}                    Show this help
@@ -163,7 +163,7 @@ def cmd_chat(
         payload["conversation_id"] = conversation_id
 
     mode = "streaming" if stream else "non-streaming"
-    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, model: {model}, reflection: {reflection}, {mode}){RESET}")
+    print(f"\n{DIM}POST /v1/chat/completions (agent: {agent}, model: {model}, level: {reflection}, {mode}){RESET}")
 
     try:
         if stream:
@@ -245,9 +245,16 @@ def _handle_stream(payload, agent_name: str, model_name: str):
     }
 
 
-def cmd_multi_turn(agent: str, model: str, reflection: str, system_prompt: str | None = None):
-    """Interactive multi-turn conversation."""
-    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}, model: {model}, reflection: {reflection}){RESET} {DIM}(type 'done' to exit){RESET}")
+def cmd_multi_turn(
+    agent: str,
+    model: str,
+    reflection: str,
+    system_prompt: str | None = None,
+    stream: bool = True,
+):
+    """Interactive multi-turn conversation (streaming by default)."""
+    mode_label = "streaming" if stream else "non-streaming"
+    print(f"\n{BOLD}Multi-turn conversation (agent: {agent}, model: {model}, level: {reflection}, mode: {mode_label}){RESET} {DIM}(type 'done' to exit){RESET}")
     conversation_id = None
     turn = 0
 
@@ -266,6 +273,7 @@ def cmd_multi_turn(agent: str, model: str, reflection: str, system_prompt: str |
             model=model,
             reflection=reflection,
             system_prompt=system_prompt if turn == 1 else None,
+            stream=stream,
             conversation_id=conversation_id,
         )
         if result:
@@ -418,7 +426,10 @@ def main():
             cmd_chat(arg, current_agent, current_model, current_reflection, system_prompt, json_schema=file_list_schema)
 
         elif cmd == "multi":
-            cmd_multi_turn(current_agent, current_model, current_reflection, system_prompt)
+            is_stream = True
+            if arg and arg.strip().lower() in ("sync", "non-stream", "non-streaming", "false"):
+                is_stream = False
+            cmd_multi_turn(current_agent, current_model, current_reflection, system_prompt, stream=is_stream)
 
         elif cmd == "raw":
             cmd_raw()
