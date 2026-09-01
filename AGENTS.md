@@ -90,18 +90,17 @@ hebras-ai/
 │       ├── models.py              # GET /v1/models dynamic model discovery & reflection resolver
 │       └── agents.py              # GET /v1/agents dynamic agent persona discovery
 │
-├── integrations/                  # Framework Integrations
+├── integrations/                  # Framework Integrations (Standalone, Minimalist)
 │   ├── __init__.py                # Top-level exports with graceful ImportError fallbacks
-│   ├── base.py                    # BaseIntegrationConfig & BaseHebrasAdapter abstractions
 │   ├── google_sdk/                # Google Antigravity Python SDK integration
 │   │   ├── __init__.py
-│   │   └── google_sdk_integration.py # HebrasAntigravityAgent & SDK convenience factories
-│   ├── google_adk/                # Google Agent Development Kit (ADK) scaffolding
+│   │   └── google_sdk_integration.py # GoogleSDKConfig & create_agent factory
+│   ├── google_adk/                # Google Agent Development Kit (ADK) integration
 │   │   ├── __init__.py
-│   │   └── google_adk_integration.py # HebrasADKAgent, HebrasADKConfig, create_adk_config
+│   │   └── google_adk_integration.py # GoogleADKConfig & GoogleADKAgent runner
 │   └── llama_index/               # LlamaIndex Framework integration
 │       ├── __init__.py
-│       └── llama_index_integration.py # HebrasLLM (CustomLLM & FunctionCallingLLM)
+│       └── llama_index_integration.py # LlamaIndexConfig & HebrasLLM (CustomLLM)
 │
 ├── scripts/                       # Developer & Test Tools
 │   ├── test_cli.py                # Interactive CLI tool to test chat, stream, schema, multi-turn
@@ -128,10 +127,9 @@ hebras-ai/
         ├── test_agy_process.py    # Unit tests for run_agy and stream_agy
         ├── test_ansi_utils.py     # Unit tests for ANSI stripping & chrome extraction
         ├── test_antigravity_compatibility.py # Unit tests for Antigravity SDK schema compatibility
-        ├── test_base_integration.py # Unit tests for BaseIntegrationConfig & BaseHebrasAdapter
-        ├── test_google_sdk_integration.py # Unit tests for google_sdk and google_adk integrations
-        ├── test_llama_index_extended.py
-        ├── test_llama_index_integration.py
+        ├── test_google_adk.py     # Unit test for Google ADK integration
+        ├── test_google_sdk.py     # Unit test for Google Antigravity SDK integration
+        ├── test_llama_index.py    # Unit test for LlamaIndex HebrasLLM CustomLLM integration
         ├── test_logging_dev_level.py # Unit tests for DEV log level & reflection extraction
         ├── test_safe_runner.py    # Unit tests for safe_run_command & timeout enforcement
         ├── test_session.py        # Unit tests for AgySession lifecycle

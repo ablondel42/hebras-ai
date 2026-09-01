@@ -4,8 +4,8 @@ import json
 import threading
 
 import pytest
-from google.antigravity import Agent, LocalOpenAIAgentConfig
-from google.antigravity.hooks import policy
+
+from integrations.google_sdk import GoogleSDKConfig, create_agent
 
 
 class MockHebrasOpenAIServer(http.server.BaseHTTPRequestHandler):
@@ -59,15 +59,15 @@ class TestAntigravityAgentIntegration:
     @pytest.mark.asyncio
     async def test_agent_chat_streaming(self, mock_server):
         """Test Agent.chat streams tokens from local hebras-ai endpoint."""
-        config = LocalOpenAIAgentConfig(
+        config = GoogleSDKConfig(
             base_url=mock_server,
             model="Gemini 3.7 Flash",
-            policies=[policy.allow_all()],
         )
 
-        async with Agent(config) as agent:
+        async with create_agent(config) as agent:
             response = await agent.chat("Test prompt")
             tokens = [tk async for tk in response]
             full_text = "".join(tokens)
 
             assert "Antigravity is working locally!" in full_text
+

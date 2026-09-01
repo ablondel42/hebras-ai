@@ -27,32 +27,34 @@ python3 -m pip install -e ".[dev]"
 
 ### 2. Start the Backend Server
 ```bash
-# Run using uvicorn
-uvicorn backend.main:app --reload --port 8000
-
-# Or run using Python module
+# Recommended (pre-configured with scoped reload_dirs and reload_excludes):
 python3 -m backend.main
+
+# Or run using uvicorn CLI:
+uvicorn backend.main:app --reload --reload-dir backend --reload-dir integrations --port 8000
 ```
 
 ---
 
 ## Using with `google-antigravity` Python SDK
 
-You can route `google-antigravity` agent workflows directly to `hebras-ai` using `integrations.google_sdk` convenience helpers:
+You can route `google-antigravity` agent workflows directly to `hebras-ai` using `integrations.google_sdk`:
 
 ```python
 import asyncio
 import sys
-from integrations.google_sdk import HebrasAntigravityAgent
+from integrations.google_sdk import GoogleSDKConfig, create_agent
 
 async def main():
-    async with HebrasAntigravityAgent(
+    config = GoogleSDKConfig(
         base_url="http://localhost:8000/v1",
         model="Gemini 3.7 Flash",
         system_instructions="You are a helpful, concise AI assistant.",
-    ) as agent:
+    )
+    async with create_agent(config) as agent:
         prompt = "Explain quantum computing in 2 sentences."
-        async for token in agent.stream(prompt):
+        response = await agent.chat(prompt)
+        async for token in response:
             sys.stdout.write(token)
             sys.stdout.flush()
         print()

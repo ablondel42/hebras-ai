@@ -74,4 +74,6 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=True,
+        reload_dirs=["backend", "integrations"],
+        reload_excludes=[".venv", ".git", ".brain", "log", "logs", "tests"],
     )

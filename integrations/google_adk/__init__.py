@@ -1,12 +1,5 @@
-"""Google Agent Development Kit (ADK) integration subpackage for hebras-ai."""
-from integrations.google_adk.google_adk_integration import (
-    HebrasADKAgent,
-    HebrasADKConfig,
-    create_adk_config,
-)
+"""Google ADK integration for hebras-ai."""
+from integrations.google_adk.google_adk_integration import GoogleADKAgent, GoogleADKConfig
 
-__all__ = [
-    "HebrasADKAgent",
-    "HebrasADKConfig",
-    "create_adk_config",
-]
+__all__ = ["GoogleADKAgent", "GoogleADKConfig"]
+
