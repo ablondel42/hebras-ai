@@ -60,6 +60,13 @@ class ChatCompletionRequest(BaseModel):
     dangerously_skip_permissions: bool = False  # Explicit opt-in required for auto-approving tools
     reflection: Literal["low", "medium", "high"] | None = None  # Level of reflection/thinking
     reasoning_effort: Literal["low", "medium", "high"] | None = None  # OpenAI standard field for reasoning effort
+    # Standard OpenAI tool and function calling fields
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: Any | None = None
+    functions: list[dict[str, Any]] | None = None
+    function_call: Any | None = None
+
+    model_config = {"extra": "ignore"}
 
 
 # ── Response Models ─────────────────────────────────────────────

@@ -1,7 +1,7 @@
-"""Extended unit tests for HebrasLLM custom methods and edge cases."""
-from unittest.mock import MagicMock, patch
-
 import pytest
+pytest.importorskip("llama_index.core")
+
+from unittest.mock import MagicMock, patch
 
 from integrations.hebras_llm import HebrasLLM
 

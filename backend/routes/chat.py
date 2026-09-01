@@ -42,8 +42,8 @@ def get_session_manager(request: Request) -> SessionManager:
 def _extract_prompt_and_system(request: ChatCompletionRequest) -> tuple[str, str | None]:
     """Extract the user prompt and system instruction from the messages array.
 
-    Combines all system/developer messages into a system prefix, and uses
-    the last user message as the prompt.
+    Combines all system/developer messages into a system prefix, and extracts
+    the user prompt or conversational dialogue turns.
 
     Args:
         request: The chat completion request.
@@ -52,18 +52,36 @@ def _extract_prompt_and_system(request: ChatCompletionRequest) -> tuple[str, str
         Tuple of (prompt, system_message). prompt is empty if no user message found.
     """
     system_parts: list[str] = []
-    user_prompt: str = ""
     has_user_message: bool = False
 
+    non_system_msgs = [m for m in request.messages if m.role not in ("system", "developer")]
     for msg in request.messages:
         if msg.role in ("system", "developer"):
             if msg.content:
                 system_parts.append(msg.content)
-        elif msg.role == "user":
-            user_prompt = msg.content or ""
-            has_user_message = True
 
     system_message = "\n".join(system_parts) if system_parts else None
+
+    if not non_system_msgs:
+        return "", system_message
+
+    if len(non_system_msgs) == 1 and non_system_msgs[0].role == "user":
+        user_prompt = non_system_msgs[0].content or ""
+        has_user_message = True
+    else:
+        # Multi-message dialogue or tool interaction
+        dialogue_parts: list[str] = []
+        for msg in non_system_msgs:
+            if msg.role == "user":
+                has_user_message = True
+                dialogue_parts.append(msg.content or "")
+            elif msg.role == "tool":
+                has_user_message = True
+                dialogue_parts.append(f"[Tool Response]: {msg.content or ''}")
+            elif msg.role == "assistant":
+                if msg.content:
+                    dialogue_parts.append(f"[Assistant]: {msg.content}")
+        user_prompt = "\n\n".join(dialogue_parts)
 
     # Only combine system message into prompt if there's a user message
     if not has_user_message:

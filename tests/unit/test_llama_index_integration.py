@@ -1,4 +1,6 @@
 """Unit tests for HebrasLLM CustomLLM class."""
+import pytest
+pytest.importorskip("llama_index.core")
 from unittest.mock import MagicMock, patch
 
 from llama_index.core.llms import LLMMetadata
