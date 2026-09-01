@@ -9,9 +9,8 @@ except ImportError:
 
 # Google ADK
 try:
-    from integrations.google_adk.google_adk_integration import GoogleADKAgent, GoogleADKConfig
+    from integrations.google_adk.google_adk_integration import GoogleADKConfig
 except ImportError:
-    GoogleADKAgent = None  # type: ignore
     GoogleADKConfig = None  # type: ignore
 
 # LlamaIndex
@@ -24,9 +23,9 @@ except ImportError:
 __all__ = [
     "GoogleSDKConfig",
     "create_agent",
-    "GoogleADKAgent",
     "GoogleADKConfig",
     "HebrasLLM",
     "LlamaIndexConfig",
 ]
+
 
