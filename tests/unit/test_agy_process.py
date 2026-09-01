@@ -1,4 +1,6 @@
 """Tests for agy process command building."""
+import json
+
 from backend.agy_process import _build_command
 
 
@@ -32,7 +34,6 @@ class TestBuildCommand:
         assert "--json-schema" in cmd
         # Schema should be JSON-encoded
         schema_idx = cmd.index("--json-schema")
-        import json
         assert json.loads(cmd[schema_idx + 1]) == schema
 
     def test_command_with_conversation_id(self):

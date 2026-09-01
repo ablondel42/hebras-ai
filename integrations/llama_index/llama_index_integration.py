@@ -3,11 +3,14 @@
 Subclasses CustomLLM from llama_index.core.llms to allow LlamaIndex to treat
 hebras-ai (and its agy backend) as a remote LLM provider.
 """
+import asyncio
 import json
 import logging
 from typing import Any
 
 import httpx
+from llama_index.core import Settings
+from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.llms import (
     CompletionResponse,
@@ -46,7 +49,6 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
     def __init__(self, set_as_default: bool = False, **data: Any):
         super().__init__(**data)
         if set_as_default:
-            from llama_index.core import Settings
             Settings.llm = self
 
     def to_base_config(self) -> BaseIntegrationConfig:
@@ -178,10 +180,6 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    from llama_index.core.agent.workflow import FunctionAgent
-
     llm = HebrasLLM(
         api_base="http://localhost:8000/v1",
         agent="default",

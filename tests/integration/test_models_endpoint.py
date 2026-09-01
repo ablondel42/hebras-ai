@@ -1,6 +1,7 @@
 """Integration tests for GET /v1/models."""
 from unittest.mock import AsyncMock, patch
 
+import backend.routes.models as models_module
 from backend.safe_runner import ExecutionResult
 
 
@@ -35,7 +36,6 @@ class TestModelsEndpoint:
         mock_res = ExecutionResult(returncode=0, stdout=mock_output, stderr="", duration_ms=10)
 
         # Clear cached models
-        import backend.routes.models as models_module
         models_module._cached_models = None
         models_module._cached_catalog = None
         models_module._last_cache_time = 0.0

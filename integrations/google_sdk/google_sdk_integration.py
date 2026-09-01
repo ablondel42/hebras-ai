@@ -3,7 +3,9 @@
 Provides the `HebrasAntigravityAgent` class and helper functions to seamlessly connect
 the official `google-antigravity` Python SDK to a local or remote `hebras-ai` backend.
 """
+import asyncio
 import logging
+import sys
 from collections.abc import AsyncIterator, Callable, Sequence
 from typing import Any
 
@@ -217,9 +219,6 @@ async def stream_agent_response(
 
 
 if __name__ == "__main__":
-    import asyncio
-    import sys
-
     async def main():
         print("Running HebrasAntigravityAgent demonstration...")
         async with HebrasAntigravityAgent(

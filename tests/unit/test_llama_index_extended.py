@@ -2,7 +2,7 @@ import pytest
 
 pytest.importorskip("llama_index.core")
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from integrations.llama_index.llama_index_integration import HebrasLLM
 
@@ -60,7 +60,6 @@ class TestHebrasLLMExtended:
 
     @pytest.mark.asyncio
     async def test_acomplete(self):
-        from unittest.mock import AsyncMock
         llm = HebrasLLM(api_base="http://testserver/v1")
         mock_resp = MagicMock()
         mock_resp.json.return_value = {

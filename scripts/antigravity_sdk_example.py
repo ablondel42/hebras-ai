@@ -12,6 +12,7 @@ Prerequisites:
 import argparse
 import asyncio
 import sys
+import time
 
 from integrations.google_sdk import HebrasAntigravityAgent
 
@@ -37,7 +38,6 @@ def calculate_expression(expression: str) -> str:
 
 def get_current_time_zone() -> str:
     """Returns the local timezone offset and description."""
-    import time
     return f"Local timezone: {time.tzname[0]}, offset: {time.timezone // 3600} hours"
 
 

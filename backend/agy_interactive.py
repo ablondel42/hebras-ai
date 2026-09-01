@@ -10,6 +10,7 @@ import glob
 import json
 import logging
 import os
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -146,7 +147,6 @@ class InteractiveSession:
             raise InteractiveSessionError(f"Failed to spawn agy interactive process: {e}") from e
 
         # Wait 4 seconds for agy startup & drain initial PTY buffer
-        import time
         start_t = time.monotonic()
         while (time.monotonic() - start_t) < 4.0:
             self._drain_pty_buffer()
@@ -187,7 +187,6 @@ class InteractiveSession:
             self.child.send(f"{message}\r")
 
             # Await brain directory resolution if this turn creates a new session folder
-            import time
             start_t = time.monotonic()
             while (time.monotonic() - start_t) < 15.0:
                 self._drain_pty_buffer()
@@ -222,7 +221,6 @@ class InteractiveSession:
 
     async def _await_response_from_transcript(self) -> str:
         """Poll transcript_full.jsonl for new MODEL PLANNER_RESPONSE with content."""
-        import time
         start_time = time.monotonic()
         start_line = self._transcript_line_count
 

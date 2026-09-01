@@ -1,4 +1,5 @@
 """Unit tests for backend/turn_logger.py and logging timezone resolution."""
+import json
 import logging
 import tempfile
 
@@ -40,7 +41,6 @@ class TestTurnLogger:
         output = formatter.format(record)
         assert "timestamp" in output
         # ISO timestamp with timezone offset (e.g. +02:00 or -04:00 or Z)
-        import json
         data = json.loads(output)
         assert ("+" in data["timestamp"]) or ("-" in data["timestamp"][10:])
 

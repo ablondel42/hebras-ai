@@ -2,6 +2,8 @@
 import json
 from unittest.mock import AsyncMock, patch
 
+from backend.agy_process import AgyProcessError
+
 
 class TestChatCompletionsNonStreaming:
     """Tests for non-streaming chat completions."""
@@ -128,8 +130,6 @@ class TestChatCompletionsNonStreaming:
 
     async def test_agy_error_returns_502(self, client):
         """Test that agy process errors return 502."""
-        from backend.agy_process import AgyProcessError
-
         with patch(
             "backend.routes.chat.run_agy",
             new_callable=AsyncMock,

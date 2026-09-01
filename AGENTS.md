@@ -203,3 +203,7 @@ python scripts/antigravity_sdk_example.py --tools
 - **Workspace `.brain` Links**: When referencing artifacts (plans, walkthroughs, reports) in chat responses, format markdown links using the workspace path `file:///workspaces/hebras-ai/.brain/<conversation_id>/<filename>.md` (backed by the `.brain` symlink) so that VS Code resolves the file directly.
 - **Cmd+Click Navigation**: This ensures links resolve cleanly inside VS Code editor tabs when using `Cmd+Click` (macOS) or `Ctrl+Click` (Linux/Windows).
 
+### Top-Level Imports Invariant
+- **No Inline / Nested Imports**: All `import` and `from ... import ...` statements must be placed strictly at the top of the Python file (module scope). Never import modules inside function bodies, methods, or class definitions. Handle optional imports with top-level `try...except ImportError` guards.
+
+

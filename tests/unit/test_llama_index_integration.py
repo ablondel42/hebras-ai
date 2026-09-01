@@ -5,13 +5,13 @@ pytest.importorskip("llama_index.core")
 from unittest.mock import MagicMock, patch
 
 from llama_index.core.llms import LLMMetadata
+from llama_index.core.llms.function_calling import FunctionCallingLLM
 
 from integrations.llama_index.llama_index_integration import HebrasLLM
 
 
 class TestHebrasLLM:
     def test_metadata(self):
-        from llama_index.core.llms.function_calling import FunctionCallingLLM
         llm = HebrasLLM(agent="default", interactive=True)
         assert isinstance(llm, FunctionCallingLLM)
         meta = llm.metadata
