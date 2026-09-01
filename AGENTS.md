@@ -199,3 +199,7 @@ python scripts/antigravity_sdk_example.py --tools
 - **Real In/Out Verification Required**: Only real input/output executions (against live CLI binaries, actual subprocesses, real HTTP endpoints, and verifying actual on-disk logs and output artifacts) qualify as successful completion of a task.
 - **Verification is Primordial**: Always run real execution tests, inspect the produced logs and system responses, and confirm behavior end-to-end before concluding any task.
 
+### Artifact Link Formatting Rule
+- **Host-Compatible Tilde Paths**: When referencing artifacts (plans, walkthroughs, reports) in chat responses, ALWAYS format markdown links using the tilde path `~/.gemini/antigravity-cli/brain/<conversation_id>/<filename>.md` instead of `file:///home/vscode/...`.
+- **Cmd+Click Navigation**: This ensures links resolve directly on the user's host machine and open cleanly in the editor when using `Cmd+Click` (macOS) or `Ctrl+Click` (Linux/Windows).
+
