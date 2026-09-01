@@ -200,6 +200,6 @@ python scripts/antigravity_sdk_example.py --tools
 - **Verification is Primordial**: Always run real execution tests, inspect the produced logs and system responses, and confirm behavior end-to-end before concluding any task.
 
 ### Artifact Link Formatting Rule
-- **Host-Compatible Tilde Paths**: When referencing artifacts (plans, walkthroughs, reports) in chat responses, ALWAYS format markdown links using the tilde path `~/.gemini/antigravity-cli/brain/<conversation_id>/<filename>.md` instead of `file:///home/vscode/...`.
-- **Cmd+Click Navigation**: This ensures links resolve directly on the user's host machine and open cleanly in the editor when using `Cmd+Click` (macOS) or `Ctrl+Click` (Linux/Windows).
+- **Workspace `.brain` Links**: When referencing artifacts (plans, walkthroughs, reports) in chat responses, format markdown links using the workspace path `file:///workspaces/hebras-ai/.brain/<conversation_id>/<filename>.md` (backed by the `.brain` symlink) so that VS Code resolves the file directly.
+- **Cmd+Click Navigation**: This ensures links resolve cleanly inside VS Code editor tabs when using `Cmd+Click` (macOS) or `Ctrl+Click` (Linux/Windows).
 

@@ -1,17 +1,16 @@
 ---
-description: Always format artifact markdown links using host-friendly tilde paths (~/.gemini/antigravity-cli/brain/<conversation_id>/<file>.md) for Cmd+Click editor navigation.
+description: Always format artifact links using workspace-relative or workspace file paths (file:///workspaces/hebras-ai/.brain/<conversation_id>/<file>.md) for reliable Cmd+Click editor navigation.
 globs: ["**/*"]
 always_on: true
 ---
 
 # Artifact Link Formatting Rule
 
-When referencing artifacts (plans, walkthroughs, task summaries, or evaluation reports) in chat responses or documentation:
+When referencing artifacts (plans, walkthroughs, reports) in chat responses:
 
-1. **Use Tilde Paths**:
-   - ALWAYS format markdown links using the tilde path:
-     `[Link Text](~/.gemini/antigravity-cli/brain/<conversation_id>/<filename>.md)`
-   - NEVER use the container-specific `file:///home/vscode/...` prefix.
+1. **Workspace `.brain` Links**:
+   - Format links using the workspace symlink `file:///workspaces/hebras-ai/.brain/<conversation_id>/<filename>.md`.
+   - Alternatively, display the raw path `~/.gemini/antigravity-cli/brain/<conversation_id>/<filename>.md`.
 
-2. **Cmd+Click Navigation**:
-   - This ensures links resolve directly on the user's host machine and open cleanly in the editor when clicking with `Cmd+Click` (macOS) or `Ctrl+Click` (Linux/Windows).
+2. **Cmd+Click Compatibility**:
+   - Markdown links formatted as `file:///workspaces/hebras-ai/.brain/<conversation_id>/<filename>.md` resolve cleanly inside VS Code without broken `~` prefixing.

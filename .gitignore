@@ -61,4 +61,7 @@ log/
 logs/
 *.sqlite3
 *.db
+.brain
+.artifacts
+
 
