@@ -1,9 +1,9 @@
 """Structured JSON logging configuration and file handler setup with DEV log level support."""
 import json
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-import sys
 
 from backend.config import settings
 from backend.turn_logger import get_log_datetime, is_test_environment

@@ -1,7 +1,6 @@
 """Unit tests for backend/turn_logger.py and logging timezone resolution."""
 import logging
 import tempfile
-from pathlib import Path
 
 from backend.logging_config import JSONFormatter
 from backend.turn_logger import get_log_datetime, is_test_environment, log_turn

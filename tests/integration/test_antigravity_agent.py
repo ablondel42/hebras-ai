@@ -1,8 +1,8 @@
 """Integration tests for google-antigravity Agent workflow using hebras-ai as provider."""
-import asyncio
 import http.server
 import json
 import threading
+
 import pytest
 from google.antigravity import Agent, LocalOpenAIAgentConfig
 from google.antigravity.hooks import policy
@@ -13,7 +13,8 @@ class MockHebrasOpenAIServer(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):  # pylint: disable=invalid-name
         content_len = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(content_len)) if content_len > 0 else {}
+        if content_len > 0:
+            self.rfile.read(content_len)
 
         if self.path == "/v1/chat/completions":
             self.send_response(200)
@@ -28,9 +29,9 @@ class MockHebrasOpenAIServer(http.server.BaseHTTPRequestHandler):
             # SSE chunk 3: finish reason
             chunk3 = {"choices": [{"delta": {}, "finish_reason": "stop"}]}
 
-            self.wfile.write(f"data: {json.dumps(chunk1)}\n\n".encode("utf-8"))
-            self.wfile.write(f"data: {json.dumps(chunk2)}\n\n".encode("utf-8"))
-            self.wfile.write(f"data: {json.dumps(chunk3)}\n\n".encode("utf-8"))
+            self.wfile.write(f"data: {json.dumps(chunk1)}\n\n".encode())
+            self.wfile.write(f"data: {json.dumps(chunk2)}\n\n".encode())
+            self.wfile.write(f"data: {json.dumps(chunk3)}\n\n".encode())
             self.wfile.write(b"data: [DONE]\n\n")
         else:
             self.send_response(404)

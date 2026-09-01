@@ -1,5 +1,6 @@
 """Integration tests for GET /v1/models."""
 from unittest.mock import AsyncMock, patch
+
 from backend.safe_runner import ExecutionResult
 
 

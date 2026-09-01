@@ -1,5 +1,4 @@
 """Unit tests for google-antigravity SDK compatibility with hebras-ai."""
-import pytest
 from google.antigravity import LocalOpenAIAgentConfig
 from google.antigravity.hooks import policy
 

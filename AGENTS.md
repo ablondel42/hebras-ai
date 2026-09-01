@@ -91,11 +91,21 @@ hebras-ai/
 │       └── agents.py              # GET /v1/agents dynamic agent persona discovery
 │
 ├── integrations/                  # Framework Integrations
-│   ├── __init__.py
-│   └── hebras_llm.py              # LlamaIndex CustomLLM & FunctionCallingLLM implementation
+│   ├── __init__.py                # Top-level exports with graceful ImportError fallbacks
+│   ├── base.py                    # BaseIntegrationConfig & BaseHebrasAdapter abstractions
+│   ├── google_sdk/                # Google Antigravity Python SDK integration
+│   │   ├── __init__.py
+│   │   └── google_sdk_integration.py # HebrasAntigravityAgent & SDK convenience factories
+│   ├── google_adk/                # Google Agent Development Kit (ADK) scaffolding
+│   │   ├── __init__.py
+│   │   └── google_adk_integration.py # HebrasADKAgent, HebrasADKConfig, create_adk_config
+│   └── llama_index/               # LlamaIndex Framework integration
+│       ├── __init__.py
+│       └── llama_index_integration.py # HebrasLLM (CustomLLM & FunctionCallingLLM)
 │
 ├── scripts/                       # Developer & Test Tools
 │   ├── test_cli.py                # Interactive CLI tool to test chat, stream, schema, multi-turn
+│   ├── test_sdk.py                # Direct local SDK agent test script
 │   └── antigravity_sdk_example.py # Example script for google-antigravity Python SDK integration
 │
 ├── .agents/                       # Custom Agent Configurations
@@ -118,6 +128,8 @@ hebras-ai/
         ├── test_agy_process.py    # Unit tests for run_agy and stream_agy
         ├── test_ansi_utils.py     # Unit tests for ANSI stripping & chrome extraction
         ├── test_antigravity_compatibility.py # Unit tests for Antigravity SDK schema compatibility
+        ├── test_base_integration.py # Unit tests for BaseIntegrationConfig & BaseHebrasAdapter
+        ├── test_google_sdk_integration.py # Unit tests for google_sdk and google_adk integrations
         ├── test_llama_index_extended.py
         ├── test_llama_index_integration.py
         ├── test_logging_dev_level.py # Unit tests for DEV log level & reflection extraction

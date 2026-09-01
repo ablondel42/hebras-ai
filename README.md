@@ -38,31 +38,40 @@ python3 -m backend.main
 
 ## Using with `google-antigravity` Python SDK
 
-You can route `google-antigravity` agent workflows directly to `hebras-ai` running on `localhost:8000` using `LocalOpenAIAgentConfig`:
+You can route `google-antigravity` agent workflows directly to `hebras-ai` using `integrations.google_sdk` convenience helpers:
 
 ```python
 import asyncio
 import sys
-from google.antigravity import Agent, LocalOpenAIAgentConfig
-from google.antigravity.hooks import policy
+from integrations.google_sdk import HebrasAntigravityAgent
 
 async def main():
-    # Configure the agent to route to localhost:8000
-    config = LocalOpenAIAgentConfig(
+    async with HebrasAntigravityAgent(
         base_url="http://localhost:8000/v1",
         model="Gemini 3.7 Flash",
-        policies=[policy.allow_all()],
-    )
-
-    async with Agent(config) as agent:
-        response = await agent.chat("Explain quantum computing in 2 sentences.")
-        async for token in response:
+        system_instructions="You are a helpful, concise AI assistant.",
+    ) as agent:
+        prompt = "Explain quantum computing in 2 sentences."
+        async for token in agent.stream(prompt):
             sys.stdout.write(token)
             sys.stdout.flush()
         print()
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+Or configure the agent directly via `LocalOpenAIAgentConfig`:
+
+```python
+from google.antigravity import Agent, LocalOpenAIAgentConfig
+from google.antigravity.hooks import policy
+
+config = LocalOpenAIAgentConfig(
+    base_url="http://localhost:8000/v1",
+    model="Gemini 3.7 Flash",
+    policies=[policy.allow_all()],
+)
 ```
 
 ### Run the Example Script

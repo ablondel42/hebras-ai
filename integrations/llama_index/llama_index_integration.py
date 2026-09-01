@@ -19,6 +19,8 @@ from llama_index.core.llms.callbacks import llm_completion_callback
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from pydantic import Field
 
+from integrations.base import BaseIntegrationConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,23 +49,23 @@ class HebrasLLM(CustomLLM, FunctionCallingLLM):
             from llama_index.core import Settings
             Settings.llm = self
 
+    def to_base_config(self) -> BaseIntegrationConfig:
+        """Convert to standard BaseIntegrationConfig."""
+        return BaseIntegrationConfig(
+            api_base=self.api_base,
+            model=self.model_name,
+            agent=self.agent,
+            reflection=self.reflection,
+            interactive=self.interactive,
+            mode=self.mode,
+            dangerously_skip_permissions=self.dangerously_skip_permissions,
+            timeout=self.timeout,
+            conversation_id=self.conversation_id,
+        )
+
     def _build_payload(self, prompt: str, stream: bool = False) -> dict[str, Any]:
-        """Build request payload."""
-        payload: dict[str, Any] = {
-            "model": self.model_name,
-            "agent": self.agent,
-            "reflection": self.reflection,
-            "messages": [{"role": "user", "content": prompt}],
-            "interactive": self.interactive,
-            "dangerously_skip_permissions": self.dangerously_skip_permissions,
-        }
-        if stream:
-            payload["stream"] = True
-        if self.mode:
-            payload["mode"] = self.mode
-        if self.conversation_id:
-            payload["conversation_id"] = self.conversation_id
-        return payload
+        """Build request payload using BaseIntegrationConfig."""
+        return self.to_base_config().build_payload(prompt=prompt, stream=stream)
 
     def _prepare_chat_with_tools(
         self,

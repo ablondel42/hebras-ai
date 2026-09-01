@@ -13,9 +13,7 @@ import argparse
 import asyncio
 import sys
 
-from google.antigravity import Agent, LocalOpenAIAgentConfig
-from google.antigravity.hooks import policy
-
+from integrations.google_sdk import HebrasAntigravityAgent
 
 # ── Example Custom Tools for the Agent ──────────────────────────────────────────
 
@@ -49,24 +47,19 @@ def get_current_time_zone() -> str:
 async def run_basic_streaming(base_url: str, model: str, prompt: str):
     """Run basic agent prompt with token streaming routed through hebras-ai."""
     print("=" * 70)
-    print(f"[1] Running basic streaming agent workflow...")
+    print("[1] Running basic streaming agent workflow...")
     print(f"    Target Server : {base_url}")
     print(f"    Target Model  : {model}")
     print(f"    Prompt        : {prompt}")
     print("=" * 70)
 
-    config = LocalOpenAIAgentConfig(
+    async with HebrasAntigravityAgent(
         base_url=base_url,
         model=model,
         system_instructions="You are a knowledgeable, concise AI assistant.",
-        policies=[policy.allow_all()],
-    )
-
-    async with Agent(config) as agent:
-        response = await agent.chat(prompt)
-
+    ) as agent:
         print("\nAgent Response:")
-        async for token in response:
+        async for token in agent.stream(prompt):
             sys.stdout.write(token)
             sys.stdout.flush()
         print("\n")
@@ -75,25 +68,20 @@ async def run_basic_streaming(base_url: str, model: str, prompt: str):
 async def run_agent_with_tools(base_url: str, model: str):
     """Run agent workflow with custom tools and policy approval."""
     print("=" * 70)
-    print(f"[2] Running agent with custom Python tools...")
-    print(f"    Registered Tools: calculate_expression, get_current_time_zone")
+    print("[2] Running agent with custom Python tools...")
+    print("    Registered Tools: calculate_expression, get_current_time_zone")
     print("=" * 70)
 
-    config = LocalOpenAIAgentConfig(
+    async with HebrasAntigravityAgent(
         base_url=base_url,
         model=model,
         system_instructions="You are a helpful assistant with math and time tools.",
         tools=[calculate_expression, get_current_time_zone],
-        policies=[policy.allow_all()],
-    )
-
-    async with Agent(config) as agent:
+    ) as agent:
         prompt = "What is 48291 multiplied by 318? Also what is the local timezone?"
         print(f"\nUser: {prompt}")
-        response = await agent.chat(prompt)
-
         print("\nAgent Response:")
-        async for token in response:
+        async for token in agent.stream(prompt):
             sys.stdout.write(token)
             sys.stdout.flush()
         print("\n")
@@ -115,7 +103,7 @@ async def main():
     except Exception as e:
         print(f"\n[!] Error running agent: {e}", file=sys.stderr)
         print("\nTip: Make sure hebras-ai server is running on the specified base-url:")
-        print(f"     python3 -m uvicorn backend.main:app --port 8000")
+        print("     python3 -m uvicorn backend.main:app --port 8000")
         sys.exit(1)
 
 

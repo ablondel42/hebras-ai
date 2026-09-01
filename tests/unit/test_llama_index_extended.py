@@ -1,9 +1,10 @@
 import pytest
+
 pytest.importorskip("llama_index.core")
 
 from unittest.mock import MagicMock, patch
 
-from integrations.hebras_llm import HebrasLLM
+from integrations.llama_index.llama_index_integration import HebrasLLM
 
 
 class TestHebrasLLMExtended:

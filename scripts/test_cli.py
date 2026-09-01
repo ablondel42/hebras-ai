@@ -7,8 +7,9 @@ Start the server first:  uvicorn backend.main:app --reload --port 8000
 Then run this:           python3 scripts/test_cli.py
 """
 import json
+import readline  # noqa: F401 (enables arrow keys and history in input())
+
 import httpx
-import readline  # enables arrow keys and history in input()
 
 # ── Configuration ────────────────────────────────────────────────
 
