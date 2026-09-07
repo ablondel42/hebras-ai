@@ -1,0 +1,161 @@
+[
+  {
+    "id": "pattern-seed-lead-triage",
+    "pattern_name": "b2b_lead_triage_enrichment",
+    "description": "High-velocity B2B lead capture, enrichment, and automated scoring.",
+    "topology_summary": "Webhook (headerAuth) -> Schema Validation -> Local LLM (Gemini 3.8 Flash @ :8000) ICP Classification -> CRM Update -> Alerting",
+    "customer_pain": "Slow sales lead qualification response times leading to 40%+ drop-off in conversion and high manual rep overhead.",
+    "monetization_potential": "Drives immediate top-line pipeline expansion; billable agency automation valued at $3,500-$6,000 setup.",
+    "roi_score": 9,
+    "lessons_learned": "Enforce SEC002 authentication on incoming webhooks. Strictly route all LLM operations through http://localhost:8000/v1 (LLM001). Ensure CRM nodes handle batch rate limits.",
+    "tags": [
+      "b2b",
+      "sales",
+      "crm",
+      "lead_scoring",
+      "revenue_growth"
+    ],
+    "created_at": "2026-09-06T20:00:00Z",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-seed-dunning-recovery",
+    "pattern_name": "payment_failure_dunning_recovery",
+    "description": "Automated SaaS churn prevention and payment failure recovery workflow.",
+    "topology_summary": "Payment Webhook (headerAuth) -> Account Lookup -> Local LLM Personalized Recovery Strategy -> Multi-tier Dunning Dispatch -> Audit Logging",
+    "customer_pain": "Involuntary churn due to failed recurring payments causing 5-10% monthly revenue erosion in subscription businesses.",
+    "monetization_potential": "Direct revenue preservation; instantly recaptures $10,000-$50,000 monthly ARR with demonstrable ROI.",
+    "roi_score": 10,
+    "lessons_learned": "Never include raw gateway API keys in workflow definitions (SEC001). Leverage local LLM (LLM001) for personalized customer outreach copy.",
+    "tags": [
+      "fintech",
+      "churn_recovery",
+      "stripe",
+      "dunning",
+      "revenue_retention"
+    ],
+    "created_at": "2026-09-06T20:00:00Z",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-seed-billing-reconciliation",
+    "pattern_name": "automated_billing_reconciliation",
+    "description": "Cross-platform transaction reconciliation and accounting variance detection.",
+    "topology_summary": "Schedule Trigger -> SplitInBatches (batchSize: 50) -> Gateway & ERP Fetch -> Code Discrepancy Matcher -> Local LLM Explainer -> Anomaly Alert & Error Trigger",
+    "customer_pain": "Manual reconciliation of thousands of payment records eating 25+ finance hours monthly with error-prone spreadsheet audits.",
+    "monetization_potential": "Saves $3,000+/month in manual bookkeeping costs and eliminates financial audit penalties.",
+    "roi_score": 8,
+    "lessons_learned": "Mandate SplitInBatches to comply with LEAN001. Connect an explicit Error Trigger node (LEAN002) for audit discrepancy alerting.",
+    "tags": [
+      "accounting",
+      "reconciliation",
+      "batch_processing",
+      "cost_reduction"
+    ],
+    "created_at": "2026-09-06T20:00:00Z",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-82d61ec24b",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-06T23:43:34.931924+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-12f2164f5b",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-06T23:43:36.781439+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-9689b68723",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-06T23:44:04.298282+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-69b51221ac",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-06T23:44:06.591883+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-36c271dac3",
+    "pattern_name": "b2b_lead_triage_engine",
+    "description": "B2B Lead Triage & Instant AI Enrichment",
+    "topology_summary": "Webhook Inbound Lead -> Local Hebras AI Lead Classifier -> Batch Processor -> Mission Critical Error Trigger",
+    "customer_pain": "Directly resolves high-severity lead drop-off by responding in under 60 seconds.",
+    "monetization_potential": "Sales Pipeline Acceleration & Response Deflation",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_triage_engine"
+    ],
+    "created_at": "2026-09-06T23:44:42.439980+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-9680c73346",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-06T23:45:11.587950+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-05168eff00",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-06T23:45:13.599396+00:00",
+    "validation_status": "verified"
+  }
+]

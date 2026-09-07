@@ -1,0 +1,178 @@
+{
+  "name": "Scheduled API Batch Polling Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.POLLING_API_URL }}/items",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000002",
+      "name": "Fetch Items",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000003",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform and normalize each item in the current batch\nconst items = $input.all();\nreturn items.map((item, index) => {\n  const data = item.json || {};\n  return {\n    json: {\n      id: data.id || `batch_item_${Date.now()}_${index}`,\n      sourceUrl: $env.POLLING_API_URL,\n      status: 'processed',\n      syncedAt: new Date().toISOString(),\n      attributes: data\n    }\n  };\n});"
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000004",
+      "name": "Transform Batch Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000005",
+      "name": "Rate Limit Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateInput": false,
+        "fields": {
+          "values": [
+            {
+              "name": "status",
+              "stringValue": "completed"
+            },
+            {
+              "name": "message",
+              "stringValue": "All batch polling items processed successfully"
+            },
+            {
+              "name": "completedAt",
+              "stringValue": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1d2e3f4-0003-4000-8000-000000000006",
+      "name": "Set Completion Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {},
+      "id": "c1d2e3f4-0003-4000-8000-000000000007",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Transform Batch Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Completion Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Batch Items": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

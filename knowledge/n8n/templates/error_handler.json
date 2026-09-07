@@ -1,0 +1,82 @@
+{
+  "name": "Error Handler Sub-workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0002-4000-8000-000000000001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Format error context for outbound notification\nconst errorData = $input.item.json;\n\nconst executionId = errorData.execution?.id || 'unknown-exec-id';\nconst workflowName = errorData.workflow?.name || 'unknown-workflow';\nconst workflowId = errorData.workflow?.id || 'unknown-workflow-id';\nconst errorMessage = errorData.execution?.error?.message || errorData.execution?.error?.description || 'Unhandled execution failure';\nconst timestamp = new Date().toISOString();\n\nconst formattedAlert = {\n  alert_type: 'n8n_workflow_error',\n  timestamp: timestamp,\n  workflow: {\n    id: workflowId,\n    name: workflowName\n  },\n  execution: {\n    id: executionId,\n    error: errorMessage\n  },\n  summary: `[ALERT] Workflow \"${workflowName}\" failed during execution ${executionId}: ${errorMessage}`\n};\n\nreturn {\n  json: {\n    formattedAlert,\n    executionId,\n    workflowName,\n    errorMessage,\n    timestamp\n  }\n};"
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000002",
+      "name": "Format Error Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERROR_NOTIFICATION_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.formattedAlert }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000003",
+      "name": "Dispatch Alert Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Context": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Alert Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

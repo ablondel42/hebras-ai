@@ -63,4 +63,8 @@ logs/
 *.db
 .brain
 .artifacts
-
+!.agents/agents/
+!.agents/skills/
+!.agents/rules/
+!.agents/__init__.py
+!.agents/ORIGINAL_REQUEST.md

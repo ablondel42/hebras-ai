@@ -8,6 +8,7 @@ Then run this:           python3 scripts/test_cli.py
 """
 import json
 import readline  # noqa: F401 (enables arrow keys and history in input())
+import sys
 
 import httpx
 
@@ -319,6 +320,11 @@ def cmd_raw():
 
 
 def main():
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print_header()
+        print_help()
+        sys.exit(0)
+
     print_header()
 
     # Check server

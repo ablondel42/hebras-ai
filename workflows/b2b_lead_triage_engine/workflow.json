@@ -1,0 +1,85 @@
+{
+  "name": "B2B Lead Triage & Instant AI Enrichment",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Inbound Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbound-lead",
+        "authentication": "headerAuth"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Local Hebras AI Lead Classifier",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        320,
+        200
+      ],
+      "parameters": {
+        "options": {
+          "baseURL": "http://localhost:8000/v1",
+          "model": "Gemini 3.8 Flash"
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "Batch Processor",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        540,
+        200
+      ],
+      "parameters": {
+        "batchSize": 10
+      }
+    },
+    {
+      "id": "4",
+      "name": "Mission Critical Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        420
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook Inbound Lead": {
+      "main": [
+        [
+          {
+            "node": "Local Hebras AI Lead Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Local Hebras AI Lead Classifier": {
+      "main": [
+        [
+          {
+            "node": "Batch Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
