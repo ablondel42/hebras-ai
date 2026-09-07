@@ -8,26 +8,24 @@ closed-loop validation gates, and disk artifact persistence.
 from __future__ import annotations
 
 import argparse
-import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 REPO_ROOT = str(Path(__file__).resolve().parent.parent)
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-import httpx
+import httpx  # noqa: E402
 
-from integrations.google_adk.agent import root_agent
-from integrations.google_adk.memory.store import EpisodicMemoryStore
-from integrations.google_adk.tools import (
+from integrations.google_adk.agent import root_agent  # noqa: E402
+from integrations.google_adk.tools import (  # noqa: E402
     evaluate_workflow_roi_and_pain,
+    inspect_execution_logs,
     propose_and_save_workflow,
     read_local_templates,
     recall_learned_patterns,
-    record_learned_pattern,
     search_web_workflows,
     validate_n8n_workflow,
 )
@@ -50,7 +48,8 @@ def verify_agent_structure() -> None:
 
     assert root_agent.model.model == "Gemini 3.8 Flash", "Model must be Gemini 3.8 Flash"
     assert "8000" in str(root_agent.model.client.base_url), "Base URL must target port 8000"
-    assert len(root_agent.tools) == 7, "Must have 7 dedicated ADK tools"
+    assert len(root_agent.tools) == 8, "Must have 8 dedicated ADK tools"
+    assert any(t.__name__ == "inspect_execution_logs" for t in root_agent.tools), "inspect_execution_logs must be registered"
     print("[PASS] Agent structure verified.")
 
 
@@ -222,6 +221,46 @@ High-performance inbound lead capture, enrichment, and qualification pipeline.
     print("[PASS] Closed-loop validation and persistence verified on disk.")
 
 
+def verify_logging_and_self_debugging() -> None:
+    """Verify ADK logging files exist and inspect_execution_logs diagnoses issues."""
+    print_step("5. Verifying ADK Logging & Autonomous Self-Debugging Tool")
+
+    log_dir = Path(__file__).resolve().parent.parent / "log" / "adk"
+    adk_log = log_dir / "adk.log"
+    tools_log = log_dir / "tools.log"
+    memory_log = log_dir / "memory.log"
+
+    print(f"Checking log directory: {log_dir}")
+    assert adk_log.exists(), f"adk.log missing at {adk_log}"
+    assert tools_log.exists(), f"tools.log missing at {tools_log}"
+    assert memory_log.exists(), f"memory.log missing at {memory_log}"
+
+    print(f"  - adk.log size: {adk_log.stat().st_size} bytes")
+    print(f"  - tools.log size: {tools_log.stat().st_size} bytes")
+    print(f"  - memory.log size: {memory_log.stat().st_size} bytes")
+    assert adk_log.stat().st_size > 0, "adk.log should not be empty"
+
+    # Test autonomous log inspection
+    print("\nExecuting inspect_execution_logs(log_target='adk', tail_lines=20):")
+    report = inspect_execution_logs(log_target="adk", tail_lines=20)
+    print(f"  - Status: {report['status']}")
+    print(f"  - Matched lines count: {report['matched_lines_count']}")
+    print(f"  - Error count: {report['error_count']}")
+    print(f"  - Warning count: {report['warning_count']}")
+    print(f"  - Diagnostics: {report['diagnostics']}")
+    assert report["status"] == "success"
+    assert report["matched_lines_count"] > 0
+
+    # Test filtering tools log
+    print("\nExecuting inspect_execution_logs(log_target='tools', query='saved'):")
+    tools_report = inspect_execution_logs(log_target="tools", query="saved")
+    print(f"  - Status: {tools_report['status']}")
+    print(f"  - Matched lines count: {tools_report['matched_lines_count']}")
+    assert tools_report["status"] == "success"
+
+    print("[PASS] Logging architecture and autonomous self-debugging tool verified on disk.")
+
+
 def check_local_server_liveness() -> bool:
     """Check if hebras-ai server on port 8000 is reachable."""
     try:
@@ -246,9 +285,10 @@ def main() -> None:
     verify_memory_and_roi()
     verify_web_search_and_templates()
     verify_closed_loop_generation_and_persistence()
+    verify_logging_and_self_debugging()
 
     server_live = check_local_server_liveness()
-    print_step(f"5. Local API Server Check (http://localhost:8000/v1): {'ONLINE' if server_live else 'OFFLINE'}")
+    print_step(f"6. Local API Server Check (http://localhost:8000/v1): {'ONLINE' if server_live else 'OFFLINE'}")
     if server_live:
         print("[INFO] hebras-ai server is running on port 8000.")
         if args.live_api:

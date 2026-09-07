@@ -9,6 +9,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
+
+logger = get_adk_logger("tools.local_templates")
+
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "knowledge" / "n8n" / "templates"
 
 TEMPLATE_METADATA: dict[str, dict[str, str]] = {
@@ -42,6 +46,7 @@ def read_local_templates(template_name: str | None = None) -> dict[str, Any]:
         Index of available templates or the parsed workflow JSON definition of the requested template.
     """
     if not TEMPLATES_DIR.exists():
+        logger.warning(f"Templates directory not found: {TEMPLATES_DIR}")
         return {
             "status": "error",
             "message": f"Templates directory not found at {TEMPLATES_DIR}",
@@ -62,6 +67,15 @@ def read_local_templates(template_name: str | None = None) -> dict[str, Any]:
                     "best_for": meta.get("best_for", "Workflow automation"),
                 }
             )
+        logger.info(
+            format_adk_tree(
+                "Local templates catalog indexed",
+                [
+                    ("Total Templates", len(templates_index)),
+                    ("Available Blueprints", list(available_files.keys())),
+                ],
+            )
+        )
         return {
             "status": "success",
             "total_templates": len(templates_index),
@@ -72,6 +86,9 @@ def read_local_templates(template_name: str | None = None) -> dict[str, Any]:
     target_path = available_files.get(clean_name)
 
     if not target_path or not target_path.exists():
+        logger.warning(
+            f"Template '{template_name}' not found. Available options: {list(available_files.keys())}"
+        )
         return {
             "status": "error",
             "message": f"Template '{template_name}' not found.",
@@ -83,6 +100,16 @@ def read_local_templates(template_name: str | None = None) -> dict[str, Any]:
             workflow_data = json.load(f)
 
         node_names = [n.get("name", "Unnamed") for n in workflow_data.get("nodes", [])]
+        logger.info(
+            format_adk_tree(
+                f"Loaded seed template '{clean_name}'",
+                [
+                    ("Filename", target_path.name),
+                    ("Node Count", len(node_names)),
+                    ("Nodes", node_names[:5]),
+                ],
+            )
+        )
         return {
             "status": "success",
             "template_name": clean_name,
@@ -93,6 +120,7 @@ def read_local_templates(template_name: str | None = None) -> dict[str, Any]:
             "workflow": workflow_data,
         }
     except Exception as e:
+        logger.error(f"Failed to parse template '{template_name}': {e}")
         return {
             "status": "error",
             "message": f"Failed to parse template '{template_name}': {e}",

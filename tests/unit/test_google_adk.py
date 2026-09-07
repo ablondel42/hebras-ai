@@ -69,7 +69,7 @@ def test_google_adk_agent_loader_discovery():
     assert loaded.name == "root_agent"
     assert isinstance(loaded.model, OpenAILlm)
     assert loaded.model.model == "Gemini 3.8 Flash"
-    assert len(loaded.tools) == 7
+    assert len(loaded.tools) == 8
 
 
 

@@ -8,9 +8,14 @@ from __future__ import annotations
 
 import datetime
 import json
+import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
+
+logger = get_adk_logger("memory.store")
 
 DEFAULT_MEMORY_FILE = Path(__file__).parent / "episodic_patterns.json"
 
@@ -69,6 +74,15 @@ class EpisodicMemoryStore:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.storage_path.exists():
             self._save_patterns(DEFAULT_SEED_PATTERNS)
+            logger.info(
+                format_adk_tree(
+                    f"Initialized episodic store with seed patterns at {self.storage_path.name}",
+                    [
+                        ("Seed Patterns", len(DEFAULT_SEED_PATTERNS)),
+                        ("Storage Path", str(self.storage_path)),
+                    ],
+                )
+            )
 
     def _load_patterns(self) -> list[dict[str, Any]]:
         """Load patterns from disk."""
@@ -87,6 +101,7 @@ class EpisodicMemoryStore:
         with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(patterns, f, indent=2, ensure_ascii=False)
         temp_file.replace(self.storage_path)
+        logger.debug(f"Persisted {len(patterns)} pattern(s) to {self.storage_path.name}")
 
     def recall(
         self,
@@ -105,6 +120,7 @@ class EpisodicMemoryStore:
         Returns:
             List of matching pattern dictionaries sorted by score and recency.
         """
+        start_time = time.perf_counter()
         patterns = self._load_patterns()
         results: list[dict[str, Any]] = []
 
@@ -141,7 +157,21 @@ class EpisodicMemoryStore:
             key=lambda x: (x.get("roi_score", 0), x.get("created_at", "")),
             reverse=True,
         )
-        return results[:limit]
+        returned = results[:limit]
+        elapsed = (time.perf_counter() - start_time) * 1000.0
+        logger.info(
+            format_adk_tree(
+                f"Episodic memory search matched {len(returned)} pattern(s)",
+                [
+                    ("Query", query or "None"),
+                    ("Min ROI Filter", min_roi_score or "None"),
+                    ("Store Total", len(patterns)),
+                    ("Matches", [r.get("pattern_name") for r in returned]),
+                ],
+                duration_ms=elapsed,
+            )
+        )
+        return returned
 
     def record(
         self,
@@ -169,6 +199,7 @@ class EpisodicMemoryStore:
         Returns:
             The recorded pattern dictionary.
         """
+        start_time = time.perf_counter()
         patterns = self._load_patterns()
         entry: dict[str, Any] = {
             "id": f"pattern-{uuid.uuid4().hex[:10]}",
@@ -185,6 +216,19 @@ class EpisodicMemoryStore:
         }
         patterns.append(entry)
         self._save_patterns(patterns)
+        elapsed = (time.perf_counter() - start_time) * 1000.0
+        logger.info(
+            format_adk_tree(
+                f"Episodic memory saved new pattern '{pattern_name}'",
+                [
+                    ("Entry ID", entry["id"]),
+                    ("Pattern Name", pattern_name),
+                    ("ROI Score", entry["roi_score"]),
+                    ("Total Patterns in Store", len(patterns)),
+                ],
+                duration_ms=elapsed,
+            )
+        )
         return entry
 
     def list_all(self) -> list[dict[str, Any]]:
@@ -194,3 +238,4 @@ class EpisodicMemoryStore:
     def clear(self) -> None:
         """Clear memory patterns (useful for tests)."""
         self._save_patterns([])
+        logger.debug("Episodic memory store cleared.")

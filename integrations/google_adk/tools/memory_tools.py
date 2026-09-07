@@ -6,9 +6,13 @@ metrics, as well as record newly discovered workflow patterns into memory.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
 from integrations.google_adk.memory.store import EpisodicMemoryStore
+
+logger = get_adk_logger("tools.memory")
 
 
 def recall_learned_patterns(
@@ -25,8 +29,22 @@ def recall_learned_patterns(
         List of matching verified workflow architectures, customer pain analyses,
         and operational lessons learned.
     """
+    start_time = time.perf_counter()
     store = EpisodicMemoryStore()
-    return store.recall(query=topic, min_roi_score=min_roi_score, limit=5)
+    patterns = store.recall(query=topic, min_roi_score=min_roi_score, limit=5)
+    elapsed = (time.perf_counter() - start_time) * 1000.0
+    logger.info(
+        format_adk_tree(
+            f"Recalled {len(patterns)} pattern(s) from episodic memory",
+            [
+                ("Topic Query", topic or "None (all high-ROI)"),
+                ("Min ROI Score", min_roi_score or "None"),
+                ("Returned Patterns", [p.get("pattern_name") for p in patterns]),
+            ],
+            duration_ms=elapsed,
+        )
+    )
+    return patterns
 
 
 def record_learned_pattern(
@@ -54,8 +72,9 @@ def record_learned_pattern(
     Returns:
         Confirmation dictionary containing the stored memory entry.
     """
+    start_time = time.perf_counter()
     store = EpisodicMemoryStore()
-    return store.record(
+    entry = store.record(
         pattern_name=pattern_name,
         description=description,
         topology_summary=topology_summary,
@@ -65,3 +84,18 @@ def record_learned_pattern(
         roi_score=roi_score,
         tags=tags,
     )
+    elapsed = (time.perf_counter() - start_time) * 1000.0
+    logger.info(
+        format_adk_tree(
+            f"Recorded learned pattern '{pattern_name}' into episodic memory",
+            [
+                ("Pattern Name", pattern_name),
+                ("Memory ID", entry.get("id")),
+                ("ROI Score", entry.get("roi_score")),
+                ("Customer Pain", customer_pain or "Not specified"),
+                ("Monetization", monetization_potential or "Not specified"),
+            ],
+            duration_ms=elapsed,
+        )
+    )
+    return entry

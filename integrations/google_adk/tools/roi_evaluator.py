@@ -7,7 +7,12 @@ and commercial monetization potential for proposed automations.
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
+
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
+
+logger = get_adk_logger("tools.roi_evaluator")
 
 # Domain indicator keywords for automatic heuristic scoring
 REVENUE_INDICATORS = {
@@ -39,6 +44,7 @@ def evaluate_workflow_roi_and_pain(
         Structured evaluation containing customer pain intensity (1-10), monetization
         potential (1-10), estimated financial savings, and strategic implementation guidance.
     """
+    start_time = time.perf_counter()
     summary_lower = workflow_summary.lower()
     words = set(re.findall(r"\b\w+\b", summary_lower))
 
@@ -49,7 +55,7 @@ def evaluate_workflow_roi_and_pain(
     # Calculate monetization / revenue impact heuristic
     revenue_matches = len(words.intersection(REVENUE_INDICATORS))
     efficiency_matches = len(words.intersection(EFFICIENCY_INDICATORS))
-    
+
     if revenue_matches > 1:
         monetization_score = min(10, 8 + revenue_matches)
         monetization_model = "Direct Top-Line Revenue Acceleration & Churn Recapture"
@@ -86,6 +92,23 @@ def evaluate_workflow_roi_and_pain(
         complexity = "Medium-High"
     elif "webhook" in summary_lower and "alert" in summary_lower:
         complexity = "Low-Medium"
+
+    elapsed = (time.perf_counter() - start_time) * 1000.0
+
+    logger.info(
+        format_adk_tree(
+            "Workflow ROI & Customer Pain Evaluation completed",
+            [
+                ("Overall ROI Score", f"{overall_roi_score}/10"),
+                ("Pain Intensity", f"{pain_score}/10 ({'Critical' if pain_score >= 9 else 'High'})"),
+                ("Monetization Potential", f"{monetization_score}/10"),
+                ("Monetization Model", monetization_model),
+                ("Target Audience", detected_audience),
+                ("Estimated Value", estimated_monthly_value),
+            ],
+            duration_ms=elapsed,
+        )
+    )
 
     return {
         "overall_roi_score": overall_roi_score,

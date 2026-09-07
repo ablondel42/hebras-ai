@@ -7,10 +7,15 @@ and monetization potential across community showcases, repositories, and forums.
 from __future__ import annotations
 
 import re
+import time
 import urllib.parse
 from typing import Any
 
 import httpx
+
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
+
+logger = get_adk_logger("tools.web_search")
 
 # Curated benchmark knowledge of proven high-pain, high-ROI workflow architectures
 CURATED_HIGH_ROI_WORKFLOWS: list[dict[str, Any]] = [
@@ -86,12 +91,11 @@ def _search_duckduckgo_lite(query: str, max_results: int = 5) -> list[dict[str, 
         with httpx.Client(timeout=6.0, follow_redirects=True) as client:
             resp = client.get(url, headers=headers)
             if resp.status_code != 200:
+                logger.debug(f"DuckDuckGo Lite returned non-200 status: {resp.status_code}")
                 return []
 
             html = resp.text
-            # Simple regex parser for DuckDuckGo Lite results
             results: list[dict[str, Any]] = []
-            # Extract links and snippets from table rows
             link_pattern = re.compile(
                 r'<a[^>]+class=[\'"]result-link[\'"][^>]*href=[\'"]([^\'"]+)[\'"][^>]*>(.*?)</a>',
                 re.IGNORECASE,
@@ -117,7 +121,8 @@ def _search_duckduckgo_lite(query: str, max_results: int = 5) -> list[dict[str, 
                     }
                 )
             return results
-    except Exception:
+    except Exception as exc:
+        logger.debug(f"Live web search failed (offline or throttled): {exc}")
         return []
 
 
@@ -135,6 +140,7 @@ def search_web_workflows(
         List of workflow findings containing title, url, snippet, customer pain,
         and monetization potential.
     """
+    start_time = time.perf_counter()
     expanded_query = query
     if search_focus == "market_pain_and_roi":
         expanded_query = f"{query} high ROI customer pain monetization n8n workflow"
@@ -164,8 +170,6 @@ def search_web_workflows(
     curated_matches.sort(key=lambda x: (x[0], x[1].get("roi_rating", 0)), reverse=True)
     curated_results = [item for _, item in curated_matches]
 
-    # Combine results: prioritize curated ground-truth records with rich ROI analysis,
-    # enriched with any live web links
     combined: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
 
@@ -192,7 +196,24 @@ def search_web_workflows(
             )
 
     if not combined:
-        # Fallback to top curated workflows if no exact keyword match
         combined = list(CURATED_HIGH_ROI_WORKFLOWS)
 
-    return combined[:max_results]
+    final_results = combined[:max_results]
+    elapsed = (time.perf_counter() - start_time) * 1000.0
+
+    logger.info(
+        format_adk_tree(
+            f"Web search completed for query='{query}'",
+            [
+                ("Search Focus", search_focus),
+                ("Expanded Query", expanded_query),
+                ("Live Web Results", len(live_results)),
+                ("Curated Benchmark Matches", len(curated_results)),
+                ("Total Returned", len(final_results)),
+                ("Top Result", final_results[0].get("title") if final_results else "None"),
+            ],
+            duration_ms=elapsed,
+        )
+    )
+
+    return final_results

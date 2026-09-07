@@ -52,7 +52,8 @@ Provides LLM capabilities to the Agent node via the local OpenAI-compatible `heb
 - **Connection Port**: `ai_languageModel`
 - **Key Parameters**:
   - `model`: Clean foundational model discovered dynamically via `GET /v1/models`:
-    - `"Gemini 3.7 Flash"` (Recommended default)
+    - `"Gemini 3.8 Flash"` (Recommended default)
+    - `"Gemini 3.7 Flash"`
     - `"Gemini 3.6 Flash"`
     - `"Claude Sonnet 4.6"`
     - `"GPT-OSS 120B"`

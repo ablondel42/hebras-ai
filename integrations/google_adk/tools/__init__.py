@@ -1,6 +1,7 @@
 """ADK Tools package for n8n Workflow Architect Agent."""
 
 from integrations.google_adk.tools.local_templates import read_local_templates
+from integrations.google_adk.tools.log_inspector import inspect_execution_logs
 from integrations.google_adk.tools.memory_tools import (
     recall_learned_patterns,
     record_learned_pattern,
@@ -12,6 +13,7 @@ from integrations.google_adk.tools.workflow_proposer import propose_and_save_wor
 
 __all__ = [
     "evaluate_workflow_roi_and_pain",
+    "inspect_execution_logs",
     "propose_and_save_workflow",
     "read_local_templates",
     "recall_learned_patterns",

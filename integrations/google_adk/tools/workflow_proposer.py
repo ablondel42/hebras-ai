@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from pathlib import Path
 from typing import Any
 
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
 from integrations.google_adk.memory.store import EpisodicMemoryStore
 from integrations.google_adk.tools.validator import validate_n8n_workflow
+
+logger = get_adk_logger("tools.workflow_proposer")
 
 WORKFLOWS_BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "workflows"
 
@@ -46,8 +50,10 @@ def propose_and_save_workflow(
     Returns:
         Result dictionary indicating success or failure, output paths, and validation details.
     """
+    start_time = time.perf_counter()
     clean_slug = _sanitize_slug(slug)
     if not clean_slug:
+        logger.warning(f"Workflow proposal rejected: invalid slug '{slug}'")
         return {
             "status": "error",
             "message": "Invalid slug provided. Must contain alphanumeric characters.",
@@ -56,6 +62,19 @@ def propose_and_save_workflow(
     # Deterministic validation gate
     validation = validate_n8n_workflow(workflow_json, strict=False)
     if not validation["valid"] or validation["error_count"] > 0:
+        elapsed = (time.perf_counter() - start_time) * 1000.0
+        logger.warning(
+            format_adk_tree(
+                f"Pre-save validation gate failed for '{clean_slug}'",
+                [
+                    ("Slug", clean_slug),
+                    ("Errors Count", validation["error_count"]),
+                    ("Warnings Count", validation["warning_count"]),
+                    ("Diagnostics", validation["diagnostics"]),
+                ],
+                duration_ms=elapsed,
+            )
+        )
         return {
             "status": "error",
             "message": (
@@ -140,6 +159,22 @@ def propose_and_save_workflow(
         monetization_potential=monetization_text,
         roi_score=roi_val,
         tags=["production_validated", clean_slug],
+    )
+
+    elapsed = (time.perf_counter() - start_time) * 1000.0
+    logger.info(
+        format_adk_tree(
+            f"Workflow '{clean_slug}' saved and persisted",
+            [
+                ("Slug", clean_slug),
+                ("Workflow File", str(workflow_file)),
+                ("Documentation File", str(readme_file)),
+                ("Workflow Size (bytes)", workflow_file.stat().st_size),
+                ("Episodic Memory ID", memory_entry.get("id")),
+                ("ROI Score", roi_val),
+            ],
+            duration_ms=elapsed,
+        )
     )
 
     return {

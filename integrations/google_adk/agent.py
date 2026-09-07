@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from integrations.google_adk.google_adk_integration import create_agent
+from integrations.google_adk.logging import format_adk_tree, get_adk_logger
 from integrations.google_adk.tools import (
     evaluate_workflow_roi_and_pain,
+    inspect_execution_logs,
     propose_and_save_workflow,
     read_local_templates,
     recall_learned_patterns,
@@ -12,6 +14,8 @@ from integrations.google_adk.tools import (
     search_web_workflows,
     validate_n8n_workflow,
 )
+
+logger = get_adk_logger("agent")
 
 SYSTEM_INSTRUCTION = """You are the Senior n8n Workflow Architect & Automation Strategist.
 Your mission is to discover, evaluate, construct, deterministically validate, document, and persist high-ROI, production-hardened n8n workflows.
@@ -48,6 +52,10 @@ Step 4: PROPOSE, SAVE & RECORD
   * workflows/<slug>/README.md (including a detailed Business Value, Customer Pain & Monetization Analysis section).
 - Call `record_learned_pattern(...)` to store the validated topology, customer pain insights, and lessons learned into episodic memory for future reuse.
 
+Step 5: AUTONOMOUS SELF-DEBUGGING & LOG INSPECTION
+- If any tool fails, if validation reports unexpected errors, or if you encounter an unfamiliar edge case, call `inspect_execution_logs(log_target="errors" | "tools" | "adk", query=...)`.
+- Reflect on the objective error traces, identify the root cause, and autonomously self-correct your workflow or tool arguments.
+
 Always communicate with concise, professional engineering clarity.
 """
 
@@ -68,5 +76,18 @@ root_agent = create_agent(
         propose_and_save_workflow,
         recall_learned_patterns,
         record_learned_pattern,
+        inspect_execution_logs,
     ],
+)
+
+logger.info(
+    format_adk_tree(
+        "Google ADK n8n Workflow Architect root_agent initialized",
+        [
+            ("Model", "Gemini 3.8 Flash"),
+            ("Base URL", "http://localhost:8000/v1"),
+            ("Tools Count", len(root_agent.tools)),
+            ("Self-Debugging", "Enabled (inspect_execution_logs)"),
+        ],
+    )
 )

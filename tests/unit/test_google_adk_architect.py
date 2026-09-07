@@ -333,7 +333,7 @@ def test_root_agent_configuration():
     assert isinstance(root_agent.model, OpenAILlm)
     assert root_agent.model.model == "Gemini 3.8 Flash"
     assert "8000" in str(root_agent.model.client.base_url)
-    assert len(root_agent.tools) == 7
+    assert len(root_agent.tools) == 8
 
     # Verify tool names
     tool_names = [t.__name__ for t in root_agent.tools]
@@ -344,6 +344,7 @@ def test_root_agent_configuration():
     assert "propose_and_save_workflow" in tool_names
     assert "recall_learned_patterns" in tool_names
     assert "record_learned_pattern" in tool_names
+    assert "inspect_execution_logs" in tool_names
 
     # Verify instruction emphasizes pain, monetization, and local LLM
     inst = root_agent.instruction

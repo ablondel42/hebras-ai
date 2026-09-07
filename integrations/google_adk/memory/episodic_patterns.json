@@ -157,5 +157,182 @@
     ],
     "created_at": "2026-09-06T23:45:13.599396+00:00",
     "validation_status": "verified"
+  },
+  {
+    "id": "pattern-1eb419be15",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-07T17:22:19.115679+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-25a531d55b",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-07T17:22:20.994002+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-96e753cc3b",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-07T17:22:57.461320+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-f60f04779f",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-07T17:22:59.495202+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-81ca5c69c5",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-07T17:23:25.142746+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-5fb95b367f",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-07T17:23:27.145926+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-912a61c5a4",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-07T17:23:59.325661+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-b8f7bd6dfd",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-07T17:24:01.227652+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-91d19c49ea",
+    "pattern_name": "b2b_lead_triage_engine",
+    "description": "B2B Lead Triage & Instant AI Enrichment",
+    "topology_summary": "Webhook Inbound Lead -> Local Hebras AI Lead Classifier -> Batch Processor -> Mission Critical Error Trigger",
+    "customer_pain": "Directly resolves high-severity lead drop-off by responding in under 60 seconds.",
+    "monetization_potential": "Sales Pipeline Acceleration & Response Deflation",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_triage_engine"
+    ],
+    "created_at": "2026-09-07T17:24:17.709348+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-8b6386879b",
+    "pattern_name": "test_memory_tool",
+    "description": "Testing memory wrapper tool",
+    "topology_summary": "Node A -> Node B",
+    "customer_pain": "Manual effort",
+    "monetization_potential": "Cost savings",
+    "roi_score": 8,
+    "lessons_learned": "Test lesson",
+    "tags": [],
+    "created_at": "2026-09-07T17:25:20.231487+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-0b3ed37603",
+    "pattern_name": "b2b_lead_qualification",
+    "description": "B2B Lead Qualification",
+    "topology_summary": "Webhook Receiver -> Local LLM Classifier -> Error Handler Trigger",
+    "customer_pain": "Directly eliminates lead drop-off within 5 minutes.",
+    "monetization_potential": "Sales Pipeline Acceleration",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_qualification"
+    ],
+    "created_at": "2026-09-07T17:25:22.134314+00:00",
+    "validation_status": "verified"
+  },
+  {
+    "id": "pattern-9de2912694",
+    "pattern_name": "b2b_lead_triage_engine",
+    "description": "B2B Lead Triage & Instant AI Enrichment",
+    "topology_summary": "Webhook Inbound Lead -> Local Hebras AI Lead Classifier -> Batch Processor -> Mission Critical Error Trigger",
+    "customer_pain": "Directly resolves high-severity lead drop-off by responding in under 60 seconds.",
+    "monetization_potential": "Sales Pipeline Acceleration & Response Deflation",
+    "roi_score": 9,
+    "lessons_learned": "Passed 100% deterministic validation (zero plaintext secrets, authenticated webhook triggers, local LLM port 8000 compliance, and clean execution topology).",
+    "tags": [
+      "production_validated",
+      "b2b_lead_triage_engine"
+    ],
+    "created_at": "2026-09-07T17:25:29.648594+00:00",
+    "validation_status": "verified"
   }
 ]
